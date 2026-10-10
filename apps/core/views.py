@@ -343,13 +343,18 @@ def update_test_case_status(request):
         if not test_case_id or not status:
             return JsonResponse({'success': False, 'message': 'Missing test_case_id or status'}, status=400)
 
+        if status not in dict(TestCase.STATUS_CHOICES):
+            return JsonResponse({'success': False, 'message': f'Invalid status: {status}'}, status=400)
+
         test_case = TestCase.objects.get(id=test_case_id)
         test_case.status = status
         test_case.save()
 
         if comments:
+            reviewer = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
             TestCaseReview.objects.create(
                 test_case=test_case,
+                reviewer=reviewer,
                 review_comments=comments
             )
 
@@ -358,4 +363,4 @@ def update_test_case_status(request):
         return JsonResponse({'success': False, 'message': 'Test case not found'}, status=404)
     except Exception as e:
         logger.error(f"Failed to update test case status: {str(e)}", exc_info=True)
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'Failed to update test case status'}, status=500)

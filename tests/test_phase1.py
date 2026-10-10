@@ -148,3 +148,154 @@ Let me know if you need more!
         txt_file = SimpleUploadedFile("notes.txt", b"Requirement notes line 1\nRequirement notes line 2")
         content_txt = extract_content_from_file(txt_file, ".txt")
         assert "Requirement notes line 1" in content_txt
+
+    def test_pydantic_schema_rejects_empty_and_null_steps_and_results(self):
+        """Verify GeneratedTestCaseItem rejects null or empty steps/results."""
+        from pydantic import ValidationError
+
+        with pytest.raises(ValidationError):
+            GeneratedTestCaseItem.model_validate({
+                "description": "Empty steps",
+                "test_steps": [],
+                "expected_results": ["Result 1"]
+            })
+
+        with pytest.raises(ValidationError):
+            GeneratedTestCaseItem.model_validate({
+                "description": "Whitespace steps",
+                "test_steps": ["   ", ""],
+                "expected_results": ["Result 1"]
+            })
+
+        with pytest.raises(ValidationError):
+            GeneratedTestCaseItem.model_validate({
+                "description": "Empty expected results",
+                "test_steps": ["Step 1"],
+                "expected_results": []
+            })
+
+        with pytest.raises(ValidationError):
+            GeneratedTestCaseItem.model_validate({
+                "description": "Empty string step",
+                "test_steps": "   ",
+                "expected_results": ["Result 1"]
+            })
+
+    def test_extract_and_parse_bracketed_prose_before_array(self):
+        """Verify extraction succeeds when bracketed text appears before JSON array."""
+        text = """Here is the breakdown for [Order Service]:
+[
+  {
+    "description": "Order placement test",
+    "test_steps": ["Submit cart", "Select payment"],
+    "expected_results": ["Order confirmed"]
+  }
+]
+Hope this helps!"""
+        cases = extract_and_parse_test_cases(text)
+        assert len(cases) == 1
+        assert cases[0]["description"] == "Order placement test"
+
+    def test_export_test_cases_excel_sanitizes_formulas_and_uppercases_priority(self):
+        """Verify Excel export neutralizes formula prefixes and uppercases priority."""
+        tc = TestCase.objects.create(
+            title="Formula Test",
+            description="=cmd|'/C calc'!A0",
+            test_steps="+1+2\n-5\n@SUM(A1:B2)",
+            expected_results="\tDangerous tab",
+            status="approved",
+            priority="p3"
+        )
+
+        rf = RequestFactory()
+        request = rf.get(f"/test_case_reviewer/api/export-test-cases-excel/?ids={tc.id}")
+        response = export_test_cases_excel(request)
+
+        assert response.status_code == 200
+        import openpyxl
+        wb = openpyxl.load_workbook(io.BytesIO(response.content))
+        sheet = wb["Test Cases"]
+
+        # Check sanitized values
+        row = 2
+        desc_cell = sheet.cell(row=row, column=3).value
+        steps_cell = sheet.cell(row=row, column=4).value
+        results_cell = sheet.cell(row=row, column=5).value
+        priority_cell = sheet.cell(row=row, column=7).value
+
+        assert desc_cell.startswith("'=")
+        assert steps_cell.startswith("'+")
+        assert results_cell.startswith("'\t")
+        assert priority_cell == "P3"
+
+    def test_update_test_case_status_with_authenticated_user(self):
+        """Verify authenticated user is attributed as reviewer on status update."""
+        from django.contrib.auth.models import User
+        user = User.objects.create_user(username="lead_qa", password="password123")
+
+        tc = TestCase.objects.create(
+            title="Reviewer Attribution Test",
+            description="Check reviewer user is saved",
+            test_steps="1. Step",
+            expected_results="Result",
+            status="pending"
+        )
+
+        rf = RequestFactory()
+        payload = {
+            "test_case_id": tc.id,
+            "status": "approved",
+            "comments": "Signed off by Lead QA."
+        }
+        request = rf.post(
+            "/api/update-status/",
+            data=json.dumps(payload),
+            content_type="application/json"
+        )
+        request.user = user
+
+        response = update_test_case_status(request)
+        assert response.status_code == 200
+
+        review = TestCaseReview.objects.filter(test_case=tc).first()
+        assert review is not None
+        assert review.reviewer == user
+        assert review.review_comments == "Signed off by Lead QA."
+
+    def test_update_test_case_status_validation_and_safe_error(self, monkeypatch):
+        """Verify invalid status returns 400 and server exceptions return safe error."""
+        tc = TestCase.objects.create(
+            title="Validation Test",
+            description="Desc",
+            test_steps="Step",
+            expected_results="Result",
+            status="pending"
+        )
+
+        rf = RequestFactory()
+        # Invalid status
+        bad_req = rf.post(
+            "/api/update-status/",
+            data=json.dumps({"test_case_id": tc.id, "status": "invalid_status"}),
+            content_type="application/json"
+        )
+        bad_resp = update_test_case_status(bad_req)
+        assert bad_resp.status_code == 400
+
+        # Server exception safe message
+        def fake_save(*args, **kwargs):
+            raise RuntimeError("Database connection secret_key=12345 timeout")
+
+        monkeypatch.setattr(TestCase, "save", fake_save)
+
+        err_req = rf.post(
+            "/api/update-status/",
+            data=json.dumps({"test_case_id": tc.id, "status": "approved"}),
+            content_type="application/json"
+        )
+        err_resp = update_test_case_status(err_req)
+        assert err_resp.status_code == 500
+        err_data = json.loads(err_resp.content)
+        assert err_data["success"] is False
+        assert err_data["message"] == "Failed to update test case status"
+        assert "secret_key" not in err_data["message"]

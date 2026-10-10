@@ -4,7 +4,7 @@ import json
 from apps.llm.base import BaseLLMService
 from apps.knowledge.service import KnowledgeService
 from .prompts import TestCaseGeneratorPrompt
-from .schemas import extract_and_parse_test_cases
+from .schemas import extract_and_parse_test_cases, GeneratedTestCaseItem
 from apps.utils.logger_manager import get_logger
 import re
 
@@ -50,12 +50,23 @@ class TestCaseGeneratorAgent:
             try:
                 valid_test_cases = extract_and_parse_test_cases(result)
             except Exception as parse_err:
+                if "schema validation" in str(parse_err):
+                    raise parse_err
                 self.logger.warning(f"Schema parser fallback: {str(parse_err)}")
                 json_str = self._extract_json_from_response(result)
                 if not json_str:
                     raise parse_err
                 test_cases = json.loads(json_str)
-                valid_test_cases = self._validate_test_cases(test_cases)
+                cleaned_cases = self._validate_test_cases(test_cases)
+                recovered_cases = []
+                for tc in cleaned_cases:
+                    try:
+                        recovered_cases.append(GeneratedTestCaseItem.model_validate(tc).model_dump())
+                    except Exception:
+                        continue
+                if not recovered_cases:
+                    raise parse_err
+                valid_test_cases = recovered_cases
 
             if len(valid_test_cases) > self.case_count:
                 self.logger.warning(f"LLM overgenerated: expected {self.case_count}, got {len(valid_test_cases)}, auto-truncating.")
@@ -93,12 +104,23 @@ class TestCaseGeneratorAgent:
             try:
                 valid_test_cases = extract_and_parse_test_cases(result)
             except Exception as parse_err:
+                if "schema validation" in str(parse_err):
+                    raise parse_err
                 self.logger.warning(f"Schema parser fallback: {str(parse_err)}")
                 json_str = self._extract_json_from_response(result)
                 if not json_str:
                     raise parse_err
                 test_cases = json.loads(json_str)
-                valid_test_cases = self._validate_test_cases(test_cases)
+                cleaned_cases = self._validate_test_cases(test_cases)
+                recovered_cases = []
+                for tc in cleaned_cases:
+                    try:
+                        recovered_cases.append(GeneratedTestCaseItem.model_validate(tc).model_dump())
+                    except Exception:
+                        continue
+                if not recovered_cases:
+                    raise parse_err
+                valid_test_cases = recovered_cases
 
             if len(valid_test_cases) > self.case_count:
                 valid_test_cases = valid_test_cases[: self.case_count]

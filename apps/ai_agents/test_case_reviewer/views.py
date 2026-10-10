@@ -161,7 +161,7 @@ def get_test_cases(request, test_case_ids: str):
         ids = test_case_ids.split(',')
         test_cases = TestCase.objects.filter(id__in=ids).values(
             'id', 'title', 'description', 'test_steps', 
-            'expected_results', 'status', 'requirements', 'llm_provider'
+            'expected_results', 'status', 'requirements', 'llm_provider', 'priority'
         )
         return JsonResponse({
             'success': True,
@@ -210,6 +210,13 @@ def copy_test_cases(request):
         return JsonResponse({'error': 'Test cases do not exist'}, status=404)
 
 
+def _sanitize_cell_value(val):
+    """Neutralize formula-like prefixes to prevent spreadsheet formula injection."""
+    if isinstance(val, str) and val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return f"'{val}"
+    return val
+
+
 def export_test_cases_excel(request):
     """Export test cases to modern Excel (.xlsx) file using openpyxl"""
     try:
@@ -229,16 +236,25 @@ def export_test_cases_excel(request):
                     'test_steps': tc.test_steps,
                     'expected_results': tc.expected_results,
                     'status': tc.status,
-                    'priority': tc.priority or 'P2'
+                    'priority': (tc.priority or 'P2').upper()
                 }
                 for tc in test_cases_qs
             ]
         else:
-            response = get_test_cases(request, ids)
-            response_data = json.loads(response.content)
-            if not response_data.get('success'):
-                return JsonResponse({'success': False, 'message': 'Failed to retrieve test case data'})
-            test_cases = response_data.get('test_cases', [])
+            id_list = [i for i in ids.split(',') if i.strip()]
+            test_cases_qs = TestCase.objects.filter(id__in=id_list)
+            test_cases = [
+                {
+                    'id': tc.id,
+                    'title': tc.title,
+                    'description': tc.description,
+                    'test_steps': tc.test_steps,
+                    'expected_results': tc.expected_results,
+                    'status': tc.status,
+                    'priority': (tc.priority or 'P2').upper()
+                }
+                for tc in test_cases_qs
+            ]
 
         if not test_cases:
             return JsonResponse({'success': False, 'message': 'No test cases to export'})
@@ -273,9 +289,9 @@ def export_test_cases_excel(request):
             ws.append([
                 idx,
                 tc.get('id', ''),
-                tc.get('description', ''),
-                tc.get('test_steps', ''),
-                tc.get('expected_results', ''),
+                _sanitize_cell_value(tc.get('description', '')),
+                _sanitize_cell_value(tc.get('test_steps', '')),
+                _sanitize_cell_value(tc.get('expected_results', '')),
                 tc.get('status', ''),
                 tc.get('priority', 'P2')
             ])
