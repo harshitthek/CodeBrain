@@ -1,79 +1,24 @@
 @import "tailwindcss";
 
-@theme {
-  /* Hallmark Locked Tokens & Dala Architecture */
-  --color-void: #050507;
-  --color-surface-subtle: #0d0d12;
-  --color-bone-white: #f5f5f7;
-  --color-ash-gray: #8e8e98;
-  --color-silver-mist: #c2c2cb;
-  --color-electric-iris: #8052ff;
-  --color-saffron-spark: #ffb829;
-  --color-deep-verdant: #15846e;
-
-  /* Typography */
-  --font-ppneuemontreal: 'PPNeueMontreal', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-
-  /* Scale */
-  --text-caption: 12px;
-  --leading-caption: 1.5;
-  --text-nav-label: 13px;
-  --leading-nav-label: 1.2;
-  --tracking-nav-label: 0.04em;
-  --text-body: 18px;
-  --leading-body: 1.7;
-  --text-heading-2xs: 24px;
-  --leading-heading-2xs: 1.25;
-  --tracking-heading-2xs: -0.02em;
-  --text-heading-xs: 28px;
-  --leading-heading-xs: 1.1;
-  --text-subheading: 36px;
-  --leading-subheading: 1.2;
-  --text-heading-sm: 44px;
-  --leading-heading-sm: 1.15;
-  --tracking-heading-sm: -0.035em;
-  --text-heading: 54px;
-  --leading-heading: 1.08;
-  --tracking-heading: -0.038em;
-  --text-heading-lg: 68px;
-  --leading-heading-lg: 1.05;
-  --tracking-heading-lg: -0.04em;
-
-  /* Spacing Scale */
-  --spacing-6: 6px;
-  --spacing-12: 12px;
-  --spacing-18: 18px;
-  --spacing-24: 24px;
-  --spacing-30: 30px;
-  --spacing-36: 36px;
-  --spacing-60: 60px;
-  --spacing-96: 96px;
-  --spacing-120: 120px;
-
-  /* Border Radius */
-  --radius-3xl: 24px;
-  --radius-full: 9999px;
-}
-
 :root {
-  --color-void: #050507;
-  --color-surface-subtle: #0d0d12;
-  --color-bone-white: #f5f5f7;
-  --color-ash-gray: #8e8e98;
-  --color-silver-mist: #c2c2cb;
-  --color-electric-iris: #8052ff;
-  --color-saffron-spark: #ffb829;
-  --color-deep-verdant: #15846e;
-
-  --font-ppneuemontreal: 'PPNeueMontreal', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-weight-extralight: 200;
-  --font-weight-regular: 400;
-  --font-weight-semibold: 600;
-  --font-weight-bold: 700;
+  --bg-sheet: #F2F0EC;
+  --bg-well: #EAE7E0;
+  --bg-elevated: #F7F5F0;
+  --bg-row-hover: #E8E5DD;
+  --ink-primary: #262523;
+  --ink-secondary: #57554F;
+  --ink-muted: #87847C;
+  --ink-ghost-dot: #DFDCD4;
+  --rule-heavy: #262523;
+  --rule-hairline: #D5D2C9;
+  --signal-vermilion: #D95338;
+  --signal-forest: #2A6F4E;
+  --font-mono-tech: 'IBM Plex Mono', 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 /* Lenis Smooth Scrolling Specifications */
-html.lenis, html.lenis body {
+html.lenis,
+html.lenis body {
   height: auto;
 }
 
@@ -89,28 +34,29 @@ html.lenis, html.lenis body {
   overflow: hidden;
 }
 
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
-}
-
 @layer base {
-  *, ::before, ::after {
+  *,
+  ::before,
+  ::after {
     box-sizing: border-box;
+    border-radius: 0px;
   }
 
   html {
-    background-color: #050507;
-    color: #f5f5f7;
-    font-family: var(--font-ppneuemontreal);
-    font-feature-settings: "ss01" on, "cv05" on;
+    background-color: var(--bg-sheet);
+    color: var(--ink-primary);
+    font-family: var(--font-mono-tech);
+    font-variant-numeric: tabular-nums slashed-zero;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: clip;
   }
 
   body {
-    background-color: #050507;
-    color: #f5f5f7;
+    background-color: var(--bg-sheet);
+    color: var(--ink-primary);
+    font-family: var(--font-mono-tech);
+    font-variant-numeric: tabular-nums slashed-zero;
     min-height: 100vh;
     overflow-x: clip;
     position: relative;
@@ -118,204 +64,153 @@ html.lenis, html.lenis body {
     padding: 0;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-weight: 400;
-    color: #f5f5f7;
-    letter-spacing: -0.035em;
-    font-style: normal; /* Hallmark Gate 38a: Roman only, no italic headers */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 500;
+    color: var(--ink-primary);
     margin: 0;
   }
 
   p {
-    font-weight: 200;
-    line-height: 1.7;
+    font-weight: 400;
+    line-height: 1.65;
     margin: 0;
   }
 }
 
-/* Atmospheric Micro-Grain Noise (Hallmark Anti-Flat Depth) */
-.bg-noise {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+/* Subtle paper grain texture */
+.sheet-paper {
+  background-color: #F2F0EC;
+  background-image: radial-gradient(rgba(38, 37, 35, 0.03) 1px, transparent 0);
+  background-size: 24px 24px;
 }
 
-/* Atmospheric Velvet Background Glow */
-.ambient-glow {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 1400px;
-  height: 640px;
-  background: radial-gradient(ellipse 65% 50% at 50% 0%, rgba(128, 82, 255, 0.1) 0%, rgba(21, 132, 110, 0.03) 50%, transparent 80%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Custom scrollbar to keep pure void uninterrupted */
+/* Custom minimal scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-}
-::-webkit-scrollbar-track {
-  background: #050507;
-}
-::-webkit-scrollbar-thumb {
-  background: #1c1c24;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #2b2b38;
+  width: 6px;
+  height: 6px;
 }
 
-/* Hallmark 8-State Primary Action Pill */
-.btn-primary-pill {
-  background-color: #8052ff;
-  color: #ffffff;
-  border-radius: 9999px;
-  padding: 12px 24px;
-  font-size: 13px;
-  font-weight: 600;
+::-webkit-scrollbar-track {
+  background: #EAE7E0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #B8B4AA;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #262523;
+}
+
+/* Sheet Metadata Labels (matches "EU / OPEN SOURCE", "SHEET 01 / 01", "NO. PROJECT ORIGIN YEAR") */
+.meta-label {
+  font-family: var(--font-mono-tech);
+  font-size: 11px;
+  font-weight: 400;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.16em;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+.meta-value {
+  font-family: var(--font-mono-tech);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-primary);
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Structural Rules */
+.rule-heavy {
+  border-top: 1.5px solid var(--rule-heavy);
+}
+
+.rule-hairline {
+  border-top: 1px solid var(--rule-hairline);
+}
+
+/* Technical Stamp Buttons (Sharp 0px corners, crisp carbon or vermilion fill) */
+.btn-tech-primary {
+  background-color: var(--ink-primary);
+  color: var(--bg-sheet);
+  border: 1px solid var(--ink-primary);
+  padding: 10px 18px;
+  font-family: var(--font-mono-tech);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-tech-primary:hover:not(:disabled) {
+  background-color: var(--signal-vermilion);
+  border-color: var(--signal-vermilion);
+  color: #F2F0EC;
+}
+
+.btn-tech-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-tech-outline {
+  background-color: transparent;
+  color: var(--ink-primary);
+  border: 1px solid var(--rule-hairline);
+  padding: 8px 14px;
+  font-family: var(--font-mono-tech);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  outline: none;
-  text-decoration: none;
-  white-space: nowrap;
-  box-shadow: 0 0 24px -4px rgba(128, 82, 255, 0.45);
+  transition: all 0.15s ease;
 }
 
-.btn-primary-pill:hover {
-  background-color: #8f65ff;
-  transform: translateY(-1.5px);
-  box-shadow: 0 0 32px 0 rgba(128, 82, 255, 0.65);
+.btn-tech-outline:hover:not(:disabled),
+.btn-tech-outline.active {
+  border-color: var(--ink-primary);
+  background-color: var(--ink-primary);
+  color: var(--bg-sheet);
 }
 
-.btn-primary-pill:active {
-  transform: translateY(0.5px);
-  box-shadow: 0 0 16px -2px rgba(128, 82, 255, 0.4);
-}
-
-.btn-primary-pill:focus-visible {
-  outline: 2px solid #ffffff;
-  outline-offset: 3px;
-}
-
-.btn-primary-pill:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Ghost Link (Hallmark Micro-Interactions) */
-.ghost-link {
-  color: #8e8e98;
-  font-size: 13px;
+.btn-tech-vermilion {
+  background-color: var(--signal-vermilion);
+  color: #F2F0EC;
+  border: 1px solid var(--signal-vermilion);
+  padding: 10px 18px;
+  font-family: var(--font-mono-tech);
+  font-size: 11px;
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-decoration: none;
-  background: transparent;
-  border: none;
+  letter-spacing: 0.14em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   cursor: pointer;
-  transition: color 0.18s ease, opacity 0.18s ease;
-  padding: 4px 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.ghost-link:hover, .ghost-link.active {
-  color: #f5f5f7;
-}
-
-.ghost-link:focus-visible {
-  outline: 1px solid #8052ff;
-  border-radius: 4px;
-}
-
-/* Amber Accent Link */
-.accent-link {
-  color: #ffb829;
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-}
-
-.accent-link:hover {
-  color: #ffc95c;
-  transform: translateX(2px);
-}
-
-/* Hallmark Section Punctuation Marker */
-.section-label {
-  color: #ffb829;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.section-label::before {
-  content: '';
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background-color: #ffb829;
-}
-
-/* Authentic Engineering Workbench Surface (Hallmark: Single containment layer, hairline borders) */
-.workbench-surface {
-  background: rgba(14, 14, 20, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 20px;
-  backdrop-filter: blur(16px);
-  transition: border-color 0.25s ease, background 0.25s ease;
-}
-
-.workbench-surface:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(16, 16, 24, 0.75);
-}
-
-/* Diagnostic Telemetry Header (Replaces Fake MacOS Dots - Hallmark Gate 47) */
-.telemetry-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
-  color: #8e8e98;
-  letter-spacing: 0.06em;
-}
-
-.telemetry-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.btn-tech-vermilion:hover:not(:disabled) {
+  background-color: var(--ink-primary);
+  border-color: var(--ink-primary);
 }

@@ -1,83 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import { Navbar, SheetPageId, SHEET_PAGES } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { PipelineStudio } from './components/PipelineStudio';
-import { AgentRosterSection } from './components/AgentRosterSection';
 import { APIRunnerSection } from './components/APIRunnerSection';
-import { ArchitectureSection } from './components/ArchitectureSection';
 import { HybridRAGSection } from './components/HybridRAGSection';
+import { AgentRosterSection } from './components/AgentRosterSection';
+import { ArchitectureSection } from './components/ArchitectureSection';
 import { Footer } from './components/Footer';
-import { initSmoothScroll, destroySmoothScroll, scrollToElement } from './utils/smoothScroll';
+import { initSmoothScroll, destroySmoothScroll } from './utils/smoothScroll';
+
+function parseHashToPage(): SheetPageId {
+  if (typeof window === 'undefined') return 'hero';
+  const raw = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  if (raw === 'pipeline' || raw === 'orchestrator') return 'pipeline';
+  if (raw === 'apirunner' || raw === 'httpx') return 'apirunner';
+  if (raw === 'rag' || raw === 'hybrid-rag') return 'rag';
+  if (raw === 'agents' || raw === 'architecture') return 'agents';
+  return 'hero';
+}
 
 export const App: React.FC = () => {
-  const [activeSection, setActiveSection] = useState('pipeline');
+  const [activePage, setActivePage] = useState<SheetPageId>(() => parseHashToPage());
 
   useEffect(() => {
-    // Initialize darkroomengineering/lenis smooth scroll physics
     initSmoothScroll();
 
-    const handleScroll = () => {
-      const sections = ['pipeline', 'agents', 'apirunner', 'architecture', 'rag'];
-      const scrollPosition = window.scrollY + 280;
-
-      for (const sectionId of sections) {
-        const el = document.getElementById(sectionId);
-        if (el) {
-          const top = el.offsetTop;
-          const height = el.offsetHeight;
-          if (scrollPosition >= top && scrollPosition < top + height) {
-            setActiveSection(sectionId);
-            break;
-          }
-        }
-      }
+    const handleHashChange = () => {
+      const next = parseHashToPage();
+      setActivePage(next);
+      window.scrollTo({ top: 0, behavior: 'auto' });
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('hashchange', handleHashChange);
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('hashchange', handleHashChange);
       destroySmoothScroll();
     };
   }, []);
 
-  const handleLaunchPipeline = () => {
-    scrollToElement('pipeline');
+  const handleNavigate = (page: SheetPageId) => {
+    setActivePage(page);
+    if (typeof window !== 'undefined') {
+      const nextHash = page === 'hero' ? '#hero' : `#${page}`;
+      if (window.location.hash !== nextHash) {
+        window.history.pushState(null, '', nextHash);
+      }
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#050507] text-[#f5f5f7] relative flex flex-col selection:bg-[#8052ff] selection:text-white bg-noise">
-      {/* Deep Space Atmospheric Ambient Glow */}
-      <div className="ambient-glow" />
+    <div className="min-h-screen sheet-paper text-[#262523] relative flex flex-col">
+      {/* Right-Margin Technical Schematic Trace Line (Interactive Sheet Station Nodes) */}
+      <div
+        className="hidden xl:block fixed top-[64px] bottom-[48px] right-[28px] w-[1px] bg-[#D5D2C9] z-40"
+        aria-hidden="true"
+      >
+        {SHEET_PAGES.map((p, idx) => {
+          const topPct = (idx / (SHEET_PAGES.length - 1)) * 100;
+          const isCurrent = p.id === activePage;
+          return (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handleNavigate(p.id)}
+              title={`${p.num} ${p.label}`}
+              style={{ top: `${topPct}%` }}
+              className={`absolute -left-[5px] w-[11px] h-[11px] rounded-full border cursor-pointer p-0 flex items-center justify-center transition-colors ${
+                isCurrent
+                  ? 'border-[#262523] bg-[#F2F0EC]'
+                  : 'border-[#87847C] bg-[#F2F0EC] hover:border-[#D95338]'
+              }`}
+            >
+              {isCurrent && <span className="w-[4.5px] h-[4.5px] rounded-full bg-[#D95338]" />}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Hallmark N5 Floating Pill Navigation */}
-      <Navbar
-        onLaunchPipeline={handleLaunchPipeline}
-        activeSection={activeSection}
-      />
+      {/* Archival Sheet Index Bar (Switches between the 5 individual pages) */}
+      <Navbar activePage={activePage} onNavigate={handleNavigate} />
 
-      {/* Main Content Sections */}
+      {/* Active Individual Page View */}
       <main className="flex-1 w-full relative z-10">
-        {/* Hallmark H2 Hero Section with 3D Constellation Brain */}
-        <HeroSection onLaunchPipeline={handleLaunchPipeline} />
+        {activePage === 'hero' && <HeroSection onNavigate={handleNavigate} />}
 
-        {/* Hallmark Macrostructure 15: Split Studio Workbench */}
-        <PipelineStudio />
+        {activePage === 'pipeline' && <PipelineStudio />}
 
-        {/* Hallmark Segmented Architectural Dossier */}
-        <AgentRosterSection />
+        {activePage === 'apirunner' && <APIRunnerSection />}
 
-        {/* Hallmark Diagnostic HTTPX Execution Workbench */}
-        <APIRunnerSection />
+        {activePage === 'rag' && <HybridRAGSection />}
 
-        {/* 4-Layer System Architecture & Invariants */}
-        <ArchitectureSection />
-
-        {/* Zero-Docker Hybrid RAG Query Bench */}
-        <HybridRAGSection />
+        {activePage === 'agents' && (
+          <>
+            <AgentRosterSection />
+            <ArchitectureSection />
+          </>
+        )}
       </main>
 
-      {/* Hallmark Ft2 Inline Colophon Footer */}
-      <Footer onLaunchPipeline={handleLaunchPipeline} />
+      {/* Sheet Pagination Bar & Colophon */}
+      <Footer activePage={activePage} onNavigate={handleNavigate} />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DotMatrixText } from './DotMatrixText';
 
 interface LayerInfo {
   number: string;
@@ -10,91 +11,169 @@ interface LayerInfo {
 const LAYERS: LayerInfo[] = [
   {
     number: '01',
-    title: 'Presentation & CLI Layer',
-    tagline: 'Reactive HTML5 UI, edge-ready React showcase, and headless CI runner',
+    title: 'Presentation & Headless CLI Layer',
+    tagline: 'Django SSE templates, Archival React datasheet, & CI/CD runner',
     modules: [
       {
-        name: 'Auto-Pilot QA Pipeline',
+        name: 'Auto-Pilot QA Pipeline View',
         file: 'apps/core/templates/pipeline.html',
-        detail: '4-step stepper with real-time SSE progress events and direct TMS exports.',
+        detail: 'Server-rendered 4-step pipeline console with EventSource SSE progress streaming.',
       },
       {
-        name: 'React 19 Edge Showcase',
+        name: 'Archival Datasheet UI',
         file: 'frontend/src/',
-        detail: 'Lenis smooth-scrolling physics, Hallmark anti-AI-slop design system, and static edge delivery.',
+        detail: '5x7 dot-matrix technical showcase with interactive Actor-Critic, HTTPX, and Hybrid RAG benches.',
       },
       {
-        name: 'Headless CI/CD Runner',
+        name: 'Headless CI/CD CLI Runner',
         file: 'apps/core/management/commands/run_test_suite.py',
-        detail: 'Runs automated test suites in CI pipelines with JUnit XML and JSON summaries.',
+        detail: 'Executes API suites via python manage.py run_test_suite with JUnit XML and non-zero exit codes.',
       },
     ],
   },
   {
     number: '02',
-    title: 'Application & Agent Layer',
-    tagline: 'Autonomous Actor-Critic reflection, Pydantic v2 schemas, and closed-loop HTTPX execution',
+    title: 'Application & Multi-Agent Orchestration Layer',
+    tagline: 'Actor-Critic reflection, Pydantic v2 validation, & async HTTPX execution',
     modules: [
       {
         name: 'ActorCriticReflectionEngine',
         file: 'apps/ai_agents/common/orchestrator.py',
-        detail: 'Iterative Generator ⇄ Reviewer feedback loop with monotonic regression safeguards.',
+        detail: 'Bounded 2-pass Generator ⇄ Reviewer feedback loop with monotonic regression safeguards.',
       },
       {
         name: 'Async APITestRunner',
         file: 'apps/ai_agents/iface_case_generator/runner.py',
-        detail: 'Concurrent httpx engine with DNS IP pinning, TLS verification, and SSRF guards.',
+        detail: 'Concurrent httpx engine with DNS IP pinning, HTTPS SNI preservation, and SSRF guards.',
       },
       {
-        name: 'Enterprise Exporters',
+        name: 'Enterprise TMS Exporters',
         file: 'apps/core/exporters/',
-        detail: 'Pluggable Jira Cloud, TestRail, XMind (.xmind), and JUnit XML exporters.',
+        detail: 'JiraExporter, TestRailExporter, XMindExporter (.xmind), and JUnitExporter (.xml).',
       },
     ],
   },
   {
     number: '03',
-    title: 'Service & Universal LLM Layer',
-    tagline: 'Multi-provider LLM abstraction with thread-safe progress and SSE stream producers',
+    title: 'Universal LLM & Real-Time Telemetry Layer',
+    tagline: 'Multi-provider LLM factory with masked credentials & thread-safe SSE registry',
     modules: [
       {
-        name: 'Universal LLMServiceFactory',
+        name: 'LLMServiceFactory',
         file: 'apps/llm/base.py',
-        detail: 'Instantiates DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom vLLM endpoints.',
+        detail: 'Instantiates DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom OpenAI-compatible gateways.',
       },
       {
         name: 'ProgressRegistry & SSELogEmitter',
         file: 'apps/utils/progress_registry.py',
-        detail: 'Thread-safe background progress registry yielding SSE events to the browser.',
+        detail: 'Thread-safe progress bus streaming real-time step logs over /progress/stream/<task_id>/.',
       },
       {
         name: 'TaskContext Lifecycle Manager',
         file: 'apps/utils/logger_manager.py',
-        detail: 'Context-scoped thread-local logging and task isolation.',
+        detail: 'Thread-local task context isolation and structured execution logging.',
       },
     ],
   },
   {
     number: '04',
-    title: 'Storage & Zero-Docker Hybrid RAG',
-    tagline: 'Zero-Docker local vector store, BM25 lexical search, and RRF fusion',
+    title: 'Storage & Zero-Docker Hybrid RAG Layer',
+    tagline: 'Embedded SQLite vector store, PureBM25 lexical search, & OpenAPI/Postman parsers',
     modules: [
       {
-        name: 'HybridRetriever',
+        name: 'HybridRetriever & PureBM25',
         file: 'apps/knowledge/hybrid_retriever.py',
-        detail: 'Combines vector cosine similarity with rank-BM25 via Reciprocal Rank Fusion.',
+        detail: 'Merges dense cosine rankings and Okapi BM25 rankings via Reciprocal Rank Fusion (k=60).',
       },
       {
-        name: 'Local Vector Store',
-        file: 'apps/knowledge/vector_store.py',
-        detail: 'Self-contained NumPy cosine similarity store persisted to disk without Docker.',
+        name: 'PersistentSQLiteVectorStore',
+        file: 'apps/knowledge/chroma_store.py',
+        detail: 'Zero-Docker 384-dim embedded SQLite vector store with optional Milvus 2.x cluster mode.',
       },
       {
-        name: 'Relational Database',
-        file: 'apps/core/models.py',
-        detail: 'Django ORM schema for test cases, review rubrics, execution logs, and iterations.',
+        name: 'OpenAPI & Postman Spec Parsers',
+        file: 'apps/knowledge/openapi_parser.py',
+        detail: 'Resolves circular $ref schemas and nested Postman v2.1 folders into normalized contracts.',
       },
     ],
+  },
+];
+
+const LLM_PROVIDERS = [
+  {
+    provider: 'deepseek',
+    className: 'DeepSeekChatModel',
+    defaultModel: 'deepseek-chat',
+    endpoint: 'https://api.deepseek.com/v1',
+    timeout: '60s / 3 retries',
+  },
+  {
+    provider: 'qwen',
+    className: 'QwenChatModel',
+    defaultModel: 'qwen-plus',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    timeout: '60s / 3 retries',
+  },
+  {
+    provider: 'openai',
+    className: 'OpenAICompatibleChatModel',
+    defaultModel: 'gpt-4o-mini',
+    endpoint: 'https://api.openai.com/v1',
+    timeout: '60s / 3 retries',
+  },
+  {
+    provider: 'ollama',
+    className: 'OpenAICompatibleChatModel',
+    defaultModel: 'llama3.1:8b',
+    endpoint: 'http://localhost:11434/v1',
+    timeout: '120s / local zero-key',
+  },
+  {
+    provider: 'groq',
+    className: 'OpenAICompatibleChatModel',
+    defaultModel: 'llama-3.3-70b-versatile',
+    endpoint: 'https://api.groq.com/openai/v1',
+    timeout: '30s / LPU low-latency',
+  },
+  {
+    provider: 'custom_openai',
+    className: 'OpenAICompatibleChatModel',
+    defaultModel: 'custom-model',
+    endpoint: 'Configurable vLLM / LiteLLM gateway',
+    timeout: '60s / 3 retries',
+  },
+];
+
+const INVARIANTS = [
+  {
+    code: 'INV-01',
+    title: 'Bounded Reflection Convergence',
+    module: 'apps/ai_agents/common/orchestrator.py',
+    desc: 'Enforces a hard upper bound of max_iterations = 2 and tracks the monotonic high-water score so regressions never overwrite a superior suite.',
+  },
+  {
+    code: 'INV-02',
+    title: 'SSRF & DNS Rebinding Protection',
+    module: 'apps/ai_agents/iface_case_generator/runner.py',
+    desc: 'Blocks 169.254.169.254, fd00:ec2::254, metadata.google.internal, loopback, and private ranges; pins validated DNS IP with HTTPS sni_hostname.',
+  },
+  {
+    code: 'INV-03',
+    title: 'Zero-Docker Embedded Persistence',
+    module: 'apps/knowledge/chroma_store.py',
+    desc: 'Runs out-of-the-box using Python 3.10+ and SQLite (db.sqlite3 + chroma_vectors.sqlite3) with zero mandatory Docker or Milvus daemons.',
+  },
+  {
+    code: 'INV-04',
+    title: 'Credential Masking & Safe Serialization',
+    module: 'apps/llm/utils.py · apps/core/views.py',
+    desc: 'Never serializes plaintext API keys into template contexts or JSON responses; preserves stored secrets when masked placeholders are submitted.',
+  },
+  {
+    code: 'INV-05',
+    title: 'File & Spreadsheet Sanitization',
+    module: 'apps/ai_agents/test_case_reviewer/views.py',
+    desc: 'Isolates concurrent .docx pypandoc conversions via per-request tempfiles and forces openpyxl string cells (data_type="s") with "=" escaping.',
   },
 ];
 
@@ -102,77 +181,79 @@ export const ArchitectureSection: React.FC = () => {
   const [activeLayer, setActiveLayer] = useState<number>(0);
 
   return (
-    <section id="architecture" className="relative w-full bg-transparent py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
-      <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12">
-        
-        {/* Section Header */}
-        <div className="mb-14">
-          <span className="section-label">
-            SYSTEM ARCHITECTURE & INVARIANTS
+    <section id="architecture" className="relative w-full py-12 md:py-16 border-t border-[#262523]">
+      <div className="max-w-[1180px] mx-auto px-5 sm:px-10 md:px-14">
+        {/* Top Sheet Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <span className="meta-label">
+            SHEET 05B // ARCHITECTURE.MD · PHASES.MD · apps/llm/base.py
           </span>
-          <h2 className="text-[#f5f5f7] text-[36px] sm:text-[46px] md:text-[54px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
-            Four layers of deterministic quality.
-          </h2>
-          <p className="text-[#c2c2cb] font-[200] text-[18px] md:text-[19px] max-w-[620px] leading-[1.7]">
-            Engineered with strict architectural invariants: bounded latency, zero-Docker standalone execution, and monotonic regression safeguards.
-          </p>
+          <span className="meta-label">
+            4-LAYER STACK · <span className="text-[#262523] font-medium">05 ARCHITECTURAL INVARIANTS</span> · 06 LLM PROVIDERS
+          </span>
         </div>
 
-        {/* 4-Layer Interactive Deck */}
-        <div className="space-y-3.5 mb-16">
+        {/* Dot-Matrix Section Title */}
+        <div className="mb-8 overflow-x-auto pb-1">
+          <DotMatrixText
+            text="SYSTEM ARCHITECTURE"
+            pitch={5.0}
+            dotRadius={1.95}
+            showBed={false}
+          />
+        </div>
+
+        <div className="rule-heavy" />
+
+        {/* 4-Layer Accordion Ledger */}
+        <div className="divide-y divide-[#D5D2C9] border-b border-[#262523]">
           {LAYERS.map((layer, index) => {
             const isActive = activeLayer === index;
-
             return (
-              <div
-                key={layer.number}
-                className={`workbench-surface transition-all duration-300 rounded-[18px] overflow-hidden ${
-                  isActive ? 'border-white/[0.2] bg-white/[0.04]' : 'hover:border-white/[0.1]'
-                }`}
-              >
+              <div key={layer.number}>
                 <div
                   onClick={() => setActiveLayer(index)}
-                  className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none"
+                  className={`py-5 px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer transition-colors ${
+                    isActive ? 'bg-[#EAE7E0]/80' : 'hover:bg-[#EAE7E0]/40'
+                  }`}
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-[#8052ff] font-mono text-sm font-semibold">
-                      {layer.number}
+                    <span
+                      className={`text-[13px] font-semibold ${
+                        isActive ? 'text-[#D95338]' : 'text-[#87847C]'
+                      }`}
+                    >
+                      LAYER {layer.number}
                     </span>
-                    <h3 className="text-white text-[19px] sm:text-[21px] font-normal">
+                    <span className="text-[16px] font-medium text-[#262523]">
                       {layer.title}
-                    </h3>
+                    </span>
                   </div>
-
                   <div className="flex items-center gap-4">
-                    <span className="text-[#8e8e98] text-xs font-[200] md:text-right hidden sm:block">
+                    <span className="text-[12px] text-[#57554F] hidden md:inline">
                       {layer.tagline}
                     </span>
-                    <span className="text-[#ffb829] text-sm font-mono">
-                      {isActive ? '−' : '+'}
+                    <span className="text-[14px] font-semibold text-[#D95338]">
+                      {isActive ? '[−]' : '[+]'}
                     </span>
                   </div>
                 </div>
 
                 {isActive && (
-                  <div className="px-5 pb-6 sm:px-6 sm:pb-7 pt-2 border-t border-white/[0.05]">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-3">
-                      {layer.modules.map((mod, mIdx) => (
-                        <div
-                          key={mIdx}
-                          className="bg-black/60 p-4.5 rounded-[14px] border border-white/[0.05] space-y-2"
-                        >
-                          <div className="text-white text-sm font-medium">
-                            {mod.name}
-                          </div>
-                          <div className="text-[#8052ff] font-mono text-[11px] truncate">
-                            {mod.file}
-                          </div>
-                          <p className="text-[#8e8e98] text-xs font-[200] leading-relaxed">
-                            {mod.detail}
-                          </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 border-t border-[#D5D2C9] bg-[#EAE7E0] divide-y md:divide-y-0 md:divide-x divide-[#D5D2C9]">
+                    {layer.modules.map((mod, mIdx) => (
+                      <div key={mIdx} className="p-5 space-y-2">
+                        <div className="text-[13px] font-semibold text-[#262523]">
+                          {mod.name}
                         </div>
-                      ))}
-                    </div>
+                        <div className="text-[11px] text-[#D95338]">
+                          <code>{mod.file}</code>
+                        </div>
+                        <p className="text-[12px] text-[#57554F] leading-[1.6]">
+                          {mod.detail}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -180,42 +261,105 @@ export const ArchitectureSection: React.FC = () => {
           })}
         </div>
 
-        {/* Guaranteed Architectural Invariants */}
-        <div className="pt-8 border-t border-white/[0.08]">
-          <span className="text-[#8e8e98] text-[11px] font-mono uppercase tracking-[0.15em] block mb-6">
-            GUARANTEED ARCHITECTURAL INVARIANTS
-          </span>
+        {/* Universal LLMServiceFactory Provider Matrix */}
+        <div className="pt-12">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <span className="meta-label text-[#262523] font-semibold">
+              UNIVERSAL LLM PROVIDER MATRIX // apps/llm/base.py (LLMServiceFactory)
+            </span>
+            <span className="meta-label text-[#2A6F4E]">
+              CREDENTIAL MASKING: ENABLED (get_all_configs)
+            </span>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="space-y-2">
-              <h4 className="text-white text-[15px] font-normal">
-                1. Bounded Iterations (Bound = 2)
-              </h4>
-              <p className="text-[#c2c2cb] font-[200] text-sm leading-relaxed">
-                Prevents infinite feedback loops and non-deterministic cloud latency spikes. Reflection is strictly bounded.
-              </p>
+          <div className="border border-[#262523] bg-[#EAE7E0] divide-y divide-[#D5D2C9]">
+            <div className="grid grid-cols-12 gap-2 px-4 py-2.5 bg-[#262523] text-[#F2F0EC] text-[10px] uppercase tracking-[0.14em]">
+              <div className="col-span-3 sm:col-span-2">PROVIDER KEY</div>
+              <div className="col-span-4 sm:col-span-3">ADAPTER CLASS</div>
+              <div className="col-span-5 sm:col-span-2">DEFAULT MODEL</div>
+              <div className="hidden sm:block sm:col-span-3">GATEWAY ENDPOINT</div>
+              <div className="hidden sm:block sm:col-span-2 text-right">POLICY</div>
             </div>
-
-            <div className="space-y-2">
-              <h4 className="text-white text-[15px] font-normal">
-                2. Monotonic Regression Safeguard
-              </h4>
-              <p className="text-[#c2c2cb] font-[200] text-sm leading-relaxed">
-                If subsequent iterations score lower than previous passes, the engine guarantees preservation of the highest-scoring suite.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-white text-[15px] font-normal">
-                3. Zero-Docker Standalone RAG
-              </h4>
-              <p className="text-[#c2c2cb] font-[200] text-sm leading-relaxed">
-                All development and testing operates locally without requiring external Docker containers or heavy vector clusters.
-              </p>
-            </div>
+            {LLM_PROVIDERS.map((p) => (
+              <div
+                key={p.provider}
+                className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-[11px] hover:bg-[#F2F0EC] transition-colors"
+              >
+                <div className="col-span-3 sm:col-span-2 font-semibold text-[#D95338]">
+                  <code>{p.provider}</code>
+                </div>
+                <div className="col-span-4 sm:col-span-3 text-[#262523] truncate">
+                  <code>{p.className}</code>
+                </div>
+                <div className="col-span-5 sm:col-span-2 text-[#262523] font-medium truncate">
+                  {p.defaultModel}
+                </div>
+                <div className="hidden sm:block sm:col-span-3 text-[#57554F] truncate">
+                  <code>{p.endpoint}</code>
+                </div>
+                <div className="hidden sm:block sm:col-span-2 text-right text-[#87847C] text-[10px]">
+                  {p.timeout}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
+        {/* All 5 Architectural Invariants + Headless CLI */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-12">
+          {/* Left 7 Cols: All 5 Architectural Invariants */}
+          <div className="lg:col-span-7 space-y-3">
+            <div className="meta-label text-[#262523] font-semibold">
+              FIVE ARCHITECTURAL INVARIANTS (PHASES.MD)
+            </div>
+            <div className="divide-y divide-[#D5D2C9] border border-[#D5D2C9] bg-[#EAE7E0]">
+              {INVARIANTS.map((inv) => (
+                <div key={inv.code} className="p-3.5 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[12px] font-semibold text-[#262523]">
+                      <span className="text-[#D95338] mr-2">{inv.code}</span>
+                      {inv.title}
+                    </span>
+                    <code className="text-[10px] text-[#87847C]">{inv.module}</code>
+                  </div>
+                  <p className="text-[11px] text-[#57554F] leading-[1.55]">{inv.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right 5 Cols: Headless CI/CD CLI & Custom Agent Registration */}
+          <div className="lg:col-span-5 space-y-6">
+            <div className="space-y-2.5">
+              <div className="meta-label text-[#262523] font-semibold">
+                01 // HEADLESS CI/CD CLI RUNNER (run_test_suite.py)
+              </div>
+              <pre className="bg-[#EAE7E0] border border-[#D5D2C9] p-4 text-[11px] text-[#262523] overflow-x-auto leading-[1.65]">
+{`python manage.py run_test_suite path/to/suite.json \\
+  --base-url https://api.example.com \\
+  --concurrency 5 \\
+  --timeout 10.0 \\
+  --junit-output reports/junit.xml \\
+  --json-output reports/summary.json`}
+              </pre>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="meta-label text-[#262523] font-semibold">
+                02 // REGISTERING A NEW SUB-APP AGENT (AGENTS.MD)
+              </div>
+              <pre className="bg-[#EAE7E0] border border-[#D5D2C9] p-4 text-[11px] text-[#262523] overflow-x-auto leading-[1.65]">
+{`from apps.llm.base import LLMServiceFactory
+from apps.llm.utils import get_agent_llm_configs
+
+config = get_agent_llm_configs("security_scanner")
+llm = LLMServiceFactory.create(
+    config["default_provider"]
+)`}
+              </pre>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
