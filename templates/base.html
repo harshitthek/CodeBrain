@@ -100,7 +100,7 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {% if '/generate/' in request.path %}active{% endif %}" href="/test_case_generator/">
+                    <a class="nav-link {% if '/test_case_generator/' in request.path or '/generate/' in request.path %}active{% endif %}" href="/test_case_generator/">
                         <i class="fas fa-plus-circle"></i>
                         Test Case Generator
                     </a>

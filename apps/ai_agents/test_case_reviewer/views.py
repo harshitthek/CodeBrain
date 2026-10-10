@@ -1,4 +1,4 @@
-from apps.core.models import TestCase
+from apps.core.models import TestCase, TestCaseReview
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from apps.utils.logger_manager import get_logger
 import json
@@ -104,6 +104,18 @@ def case_review(request):
         
         review_content = review_result.content if hasattr(review_result, 'content') else str(review_result)
         
+        # Persist review record in database
+        try:
+            reviewer_user = request.user if request.user.is_authenticated else None
+            TestCaseReview.objects.create(
+                test_case=test_case,
+                reviewer=reviewer_user,
+                review_comments=review_content
+            )
+            logger.info(f"Saved TestCaseReview record for TestCase id={test_case.id}")
+        except Exception as save_err:
+            logger.warning(f"Failed to persist review record: {str(save_err)}")
+
         return JsonResponse({
             'success': True,
             'review_result': review_content
@@ -149,7 +161,7 @@ def get_test_cases(request, test_case_ids: str):
         ids = test_case_ids.split(',')
         test_cases = TestCase.objects.filter(id__in=ids).values(
             'id', 'title', 'description', 'test_steps', 
-            'expected_results', 'status', 'requirements', 'llm_provider'
+            'expected_results', 'status', 'requirements', 'llm_provider', 'priority'
         )
         return JsonResponse({
             'success': True,
@@ -198,54 +210,118 @@ def copy_test_cases(request):
         return JsonResponse({'error': 'Test cases do not exist'}, status=404)
 
 
+def _sanitize_cell_value(val):
+    """Neutralize formula-like prefixes to prevent spreadsheet formula injection."""
+    if isinstance(val, str) and val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return f"'{val}"
+    return val
+
+
 def export_test_cases_excel(request):
-    """Export test cases to Excel file"""
+    """Export test cases to modern Excel (.xlsx) file using openpyxl"""
     try:
+        from io import BytesIO
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.utils import get_column_letter
+
         ids = request.GET.get('ids')
-        if not ids:
-            return JsonResponse({'success': False, 'message': 'No test case IDs provided'})
-            
-        response = get_test_cases(request, ids)
-        response_data = json.loads(response.content)
-        
-        if not response_data.get('success'):
-            return JsonResponse({'success': False, 'message': 'Failed to retrieve test case data'})
-            
-        test_cases = response_data.get('test_cases')
-        
-        wb = xlwt.Workbook(encoding='utf-8')
-        ws = wb.add_sheet('Test Cases')
-        
-        header_style = xlwt.XFStyle()
-        header_font = xlwt.Font()
-        header_font.bold = True
-        header_style.font = header_font
-        
-        headers = ['No.', 'Description', 'Test Steps', 'Expected Results', 'Status']
-        for col, header in enumerate(headers):
-            ws.write(0, col, header, header_style)
-            ws.col(col).width = 256 * 30
-        
-        for row, test_case in enumerate(test_cases, start=1):
-            ws.write(row, 0, row)
-            ws.write(row, 1, test_case.get('description', ''))
-            ws.write(row, 2, test_case.get('test_steps', ''))
-            ws.write(row, 3, test_case.get('expected_results', ''))
-            ws.write(row, 4, test_case.get('status', ''))
-            
-            ws.row(row).height_mismatch = True
-            ws.row(row).height = 20 * 40
-        
+        if not ids or ids.strip() == 'all':
+            test_cases_qs = TestCase.objects.all().order_by('-created_at')
+            test_cases = [
+                {
+                    'id': tc.id,
+                    'title': tc.title,
+                    'description': tc.description,
+                    'test_steps': tc.test_steps,
+                    'expected_results': tc.expected_results,
+                    'status': tc.status,
+                    'priority': (tc.priority or 'P2').upper()
+                }
+                for tc in test_cases_qs
+            ]
+        else:
+            id_list = [i for i in ids.split(',') if i.strip()]
+            test_cases_qs = TestCase.objects.filter(id__in=id_list)
+            test_cases = [
+                {
+                    'id': tc.id,
+                    'title': tc.title,
+                    'description': tc.description,
+                    'test_steps': tc.test_steps,
+                    'expected_results': tc.expected_results,
+                    'status': tc.status,
+                    'priority': (tc.priority or 'P2').upper()
+                }
+                for tc in test_cases_qs
+            ]
+
+        if not test_cases:
+            return JsonResponse({'success': False, 'message': 'No test cases to export'})
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Test Cases"
+
+        headers = ['No.', 'ID', 'Description', 'Test Steps', 'Expected Results', 'Status', 'Priority']
+        ws.append(headers)
+
+        header_font = Font(name="Segoe UI", size=11, bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="1F497D", end_color="1F497D", fill_type="solid")
+        thin_border = Border(
+            left=Side(style='thin', color='D9D9D9'),
+            right=Side(style='thin', color='D9D9D9'),
+            top=Side(style='thin', color='D9D9D9'),
+            bottom=Side(style='thin', color='D9D9D9')
+        )
+        alignment_center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        alignment_left = Alignment(horizontal="left", vertical="top", wrap_text=True)
+
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = alignment_center
+            cell.border = thin_border
+
+        for idx, tc in enumerate(test_cases, start=1):
+            row_num = idx + 1
+            ws.append([
+                idx,
+                tc.get('id', ''),
+                _sanitize_cell_value(tc.get('description', '')),
+                _sanitize_cell_value(tc.get('test_steps', '')),
+                _sanitize_cell_value(tc.get('expected_results', '')),
+                tc.get('status', ''),
+                tc.get('priority', 'P2')
+            ])
+            for col_num in range(1, len(headers) + 1):
+                cell = ws.cell(row=row_num, column=col_num)
+                cell.border = thin_border
+                if col_num in [1, 2, 6, 7]:
+                    cell.alignment = alignment_center
+                else:
+                    cell.alignment = alignment_left
+
+        col_widths = {1: 8, 2: 10, 3: 40, 4: 45, 5: 40, 6: 15, 7: 12}
+        for col_num, width in col_widths.items():
+            col_letter = get_column_letter(col_num)
+            ws.column_dimensions[col_letter].width = width
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
         current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-        case_count = len(test_cases)
-        filename = f"test_cases_{current_time}_{case_count}_cases.xls"
-        
-        response = HttpResponse(content_type='application/vnd.ms-excel')
+        filename = f"test_cases_{current_time}_{len(test_cases)}_cases.xlsx"
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
-        wb.save(response)
         return response
-        
+
     except Exception as e:
         logger.error(f"Export to Excel failed: {str(e)}", exc_info=True)
         return JsonResponse({
