@@ -67,7 +67,7 @@ export const PipelineStudio: React.FC = () => {
   const handleExport = async (target: 'jira' | 'testrail' | 'markdown' | 'junit') => {
     if (!result || !result.best_test_cases.length) return;
     const exp = await CodeBrainService.exportTMS(target, result.best_test_cases, 'QA');
-    
+
     const blob = new Blob([exp.content], { type: exp.mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -83,27 +83,27 @@ export const PipelineStudio: React.FC = () => {
   };
 
   return (
-    <section id="pipeline" className="relative w-full bg-black py-28 md:py-36 overflow-hidden border-t border-white/[0.05]">
+    <section id="pipeline" className="relative w-full bg-black py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
       {/* Background flare */}
       <div className="absolute top-1/2 left-1/3 w-[600px] h-[600px] bg-[#8052ff]/5 rounded-full blur-[160px] pointer-events-none" />
 
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12 relative z-10">
+      <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12 relative z-10">
         
         {/* Section Header: Sculptural typography */}
-        <div className="mb-16">
+        <div className="mb-14">
           <span className="section-label">
             AUTONOMOUS ACTOR-CRITIC QA STUDIO
           </span>
-          <h2 className="text-white text-[42px] sm:text-[56px] md:text-[72px] lg:text-[78px] font-normal leading-[1.08] tracking-[-0.038em] mb-5">
+          <h2 className="text-white text-[38px] sm:text-[52px] md:text-[64px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
             Closed-loop test generation.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[560px] leading-[1.7]">
+          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[580px] leading-[1.7]">
             Input raw requirements. The Generator (*Actor*) synthesizes test candidates, while the Reviewer (*Critic*) audits quality and guides bounded self-healing iterations.
           </p>
         </div>
 
         {/* Floating Minimalist Stepper Dock */}
-        <div className="flex flex-wrap items-center gap-2 mb-10 p-1.5 rounded-full bg-white/[0.03] border border-white/[0.06] w-fit">
+        <div className="flex flex-wrap items-center gap-2 mb-10 p-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] w-fit">
           {[
             { num: 1, label: '01 Requirements Intake' },
             { num: 2, label: '02 Reflection Bounds' },
@@ -118,7 +118,7 @@ export const PipelineStudio: React.FC = () => {
                 key={step.num}
                 onClick={() => (!isRunning ? setCurrentStep(step.num) : null)}
                 disabled={isRunning}
-                className={`px-5 py-2.5 rounded-full text-xs font-mono uppercase tracking-[0.08em] transition-all duration-300 border-none cursor-pointer flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-full text-xs font-mono uppercase tracking-[0.08em] transition-all duration-300 border-none cursor-pointer flex items-center gap-2 ${
                   isActive
                     ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_20px_-2px_rgba(128,82,255,0.5)]'
                     : isCompleted
@@ -135,30 +135,31 @@ export const PipelineStudio: React.FC = () => {
 
         {/* Step 1: Requirements Intake (Glass Studio Console) */}
         {currentStep === 1 && (
-          <div className="glass-surface p-8 md:p-10 max-w-[960px] space-y-7">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <span className="text-[#9a9a9a] text-xs uppercase font-mono tracking-wider">
+          <div className="glass-surface p-7 md:p-10 max-w-[1040px] space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-white/[0.06]">
+              <span className="text-[#9a9a9a] text-xs uppercase font-mono tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#8052ff]" />
                 Select Architectural Spec Template:
               </span>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setRequirements(PRESET_REQUIREMENTS.checkout)}
-                  className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white transition-colors border-none cursor-pointer font-mono"
+                  className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white transition-colors border border-white/[0.06] cursor-pointer font-mono"
                 >
                   Payment Webhook
                 </button>
                 <button
                   type="button"
                   onClick={() => setRequirements(PRESET_REQUIREMENTS.oauth)}
-                  className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white transition-colors border-none cursor-pointer font-mono"
+                  className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white transition-colors border border-white/[0.06] cursor-pointer font-mono"
                 >
                   OAuth2 Token Rotation
                 </button>
                 <button
                   type="button"
                   onClick={() => setRequirements(PRESET_REQUIREMENTS.raft)}
-                  className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white transition-colors border-none cursor-pointer font-mono"
+                  className="text-xs px-3.5 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white transition-colors border border-white/[0.06] cursor-pointer font-mono"
                 >
                   Raft Leader Election
                 </button>
@@ -167,11 +168,11 @@ export const PipelineStudio: React.FC = () => {
 
             <div className="relative">
               <textarea
-                rows={10}
+                rows={9}
                 value={requirements}
                 onChange={(e) => setRequirements(e.target.value)}
                 placeholder="Paste requirements, acceptance criteria, or OpenAPI JSON/YAML spec..."
-                className="w-full bg-black/60 text-white font-mono text-[14px] leading-[1.7] rounded-[18px] p-6 border border-white/[0.06] focus:border-[#8052ff] focus:outline-none transition-colors selection:bg-[#8052ff]"
+                className="w-full bg-black/60 text-white font-mono text-[14px] leading-[1.7] rounded-[18px] p-6 border border-white/[0.08] focus:border-[#8052ff] focus:outline-none transition-colors selection:bg-[#8052ff]"
               />
             </div>
 
@@ -192,7 +193,7 @@ export const PipelineStudio: React.FC = () => {
 
         {/* Step 2: Agent Reflection Parameters */}
         {currentStep === 2 && (
-          <div className="glass-surface p-8 md:p-10 max-w-[960px] space-y-9">
+          <div className="glass-surface p-7 md:p-10 max-w-[1040px] space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               
               {/* Actor Model Selector */}
@@ -203,12 +204,12 @@ export const PipelineStudio: React.FC = () => {
                 <select
                   value={actorModel}
                   onChange={(e) => setActorModel(e.target.value)}
-                  className="w-full bg-black/70 text-white text-[14px] font-mono rounded-[14px] p-4 border border-white/[0.08] focus:border-[#8052ff] focus:outline-none"
+                  className="w-full bg-black/80 text-white text-[14px] font-mono rounded-[14px] p-4 border border-white/[0.1] focus:border-[#8052ff] focus:outline-none cursor-pointer"
                 >
-                  <option value="deepseek" className="bg-black">DeepSeek Chat (Default)</option>
+                  <option value="deepseek" className="bg-black">DeepSeek Coder (Default)</option>
                   <option value="qwen" className="bg-black">Qwen 2.5 Coder</option>
                   <option value="openai" className="bg-black">OpenAI GPT-4o</option>
-                  <option value="ollama" className="bg-black">Ollama Local</option>
+                  <option value="ollama" className="bg-black">Ollama Local vLLM</option>
                 </select>
                 <span className="text-[#9a9a9a] text-[11px] font-[200] block">
                   Instantiated via Universal LLMServiceFactory
@@ -243,7 +244,7 @@ export const PipelineStudio: React.FC = () => {
                 <label className="block text-[#9a9a9a] text-xs uppercase font-semibold font-mono tracking-wider">
                   Iteration Bound
                 </label>
-                <div className="bg-black/70 text-[#bdbdbd] text-[13px] font-mono rounded-[14px] p-4 border border-white/[0.06]">
+                <div className="bg-black/80 text-[#bdbdbd] text-[13px] font-mono rounded-[14px] p-4 border border-white/[0.08]">
                   Strict Bound = 2 Passes
                 </div>
                 <span className="text-[#9a9a9a] text-[11px] font-[200] block">
@@ -251,24 +252,6 @@ export const PipelineStudio: React.FC = () => {
                 </span>
               </div>
 
-            </div>
-
-            {/* Visual Reflection Loop Flow */}
-            <div className="p-6 rounded-[18px] bg-black/50 border border-white/[0.04] flex flex-col md:flex-row items-center justify-between gap-4 text-xs font-mono">
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#8052ff]" />
-                <span className="text-white">Actor: Synthesize Candidates</span>
-              </div>
-              <span className="text-[#9a9a9a]">⇄</span>
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ffb829]" />
-                <span className="text-white">Critic: Multi-Dimension Audit</span>
-              </div>
-              <span className="text-[#9a9a9a]">⇄</span>
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#15846e]" />
-                <span className="text-white">Monotonic Safeguard: Converge</span>
-              </div>
             </div>
 
             <div className="flex items-center justify-between pt-4 border-t border-white/[0.06]">
@@ -285,194 +268,266 @@ export const PipelineStudio: React.FC = () => {
                 onClick={handleLaunch}
                 className="btn-primary-pill"
               >
-                Launch Reflection Loop 🚀
+                Launch Reflection Loop ⚡
               </button>
             </div>
           </div>
         )}
 
-        {/* Step 3: Reflection Progress Telemetry (Futuristic Live Console) */}
+        {/* Step 3: Live Reflection Telemetry */}
         {currentStep === 3 && (
-          <div className="glass-surface p-8 md:p-10 max-w-[960px] space-y-7">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#8052ff] animate-ping" />
-                <span className="text-white text-[18px] font-normal">
-                  Actor-Critic Reflection Active...
+          <div className="glass-surface p-7 md:p-10 max-w-[1040px] space-y-7">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
+              <div>
+                <span className="text-[#ffb829] text-xs uppercase font-mono tracking-widest block mb-1">
+                  AUTONOMOUS EXECUTION IN PROGRESS
                 </span>
+                <h3 className="text-white text-xl font-normal tracking-[-0.02em]">
+                  Actor-Critic Reflection Engine
+                </h3>
               </div>
-              <span className="text-[#ffb829] font-mono text-sm font-semibold">
-                {progressPercent}%
-              </span>
+              <div className="text-xs font-mono text-[#15846e] px-3 py-1.5 rounded-full bg-[#15846e]/10 border border-[#15846e]/30">
+                LIVE SSE TELEMETRY STREAM
+              </div>
             </div>
 
-            {/* Glowing neon progress line */}
-            <div className="w-full bg-white/[0.06] rounded-full h-1.5 overflow-hidden">
-              <div
-                className="bg-[#8052ff] h-full transition-all duration-300 shadow-[0_0_12px_#8052ff]"
-                style={{ width: `${progressPercent}%` }}
-              />
+            {/* Progress bar */}
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono text-[#9a9a9a]">
+                <span>Convergence Progress</span>
+                <span>{progressPercent}%</span>
+              </div>
+              <div className="w-full h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-[#8052ff] to-[#15846e] transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
             </div>
 
-            {/* Telemetry Output Stream */}
-            <div className="bg-black/80 rounded-[18px] border border-white/[0.06] p-6 font-mono text-[13px] text-[#bdbdbd] space-y-2.5 max-h-[320px] overflow-y-auto">
-              {progressLog.map((log, idx) => (
-                <div key={idx} className="leading-relaxed flex items-baseline gap-2">
-                  <span className="text-[#8052ff] select-none">❯</span>
-                  <span>{log}</span>
+            {/* Reflection Dual Nodes Simulation */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              <div className="bg-black/60 p-5 rounded-[18px] border border-white/[0.06] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono uppercase text-[#8052ff] font-semibold">
+                    Node 01: Actor (Generator)
+                  </span>
+                  <span className="text-[10px] font-mono text-[#9a9a9a]">apps/ai_agents/test_case_generator/</span>
                 </div>
-              ))}
+                <p className="text-xs text-[#bdbdbd] font-[200]">
+                  Synthesizing candidate test cases, equivalence partitions, boundary values, and negative exception paths.
+                </p>
+              </div>
+
+              <div className="bg-black/60 p-5 rounded-[18px] border border-white/[0.06] space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono uppercase text-[#ffb829] font-semibold">
+                    Node 02: Critic (Reviewer)
+                  </span>
+                  <span className="text-[10px] font-mono text-[#9a9a9a]">apps/ai_agents/test_case_reviewer/</span>
+                </div>
+                <p className="text-xs text-[#bdbdbd] font-[200]">
+                  Auditing completeness, coverage gaps, step feasibility, and rubric score vs. {minScore}% threshold.
+                </p>
+              </div>
+            </div>
+
+            {/* Console Log Terminal */}
+            <div className="bg-black rounded-[18px] border border-white/[0.08] overflow-hidden">
+              <div className="terminal-bar">
+                <div className="terminal-dots">
+                  <div className="terminal-dot bg-[#ff5f56]" />
+                  <div className="terminal-dot bg-[#ffbd2e]" />
+                  <div className="terminal-dot bg-[#27c93f]" />
+                </div>
+                <span className="text-[#9a9a9a] text-[11px] font-mono">
+                  sse_emitter.py — thread-safe logger
+                </span>
+                <span className="w-12" />
+              </div>
+
+              <div className="p-5 font-mono text-xs space-y-2 max-h-[220px] overflow-y-auto">
+                {progressLog.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={`leading-relaxed ${
+                      log.includes('[CONVERGED]')
+                        ? 'text-[#15846e]'
+                        : log.includes('[PASS')
+                        ? 'text-[#ffb829]'
+                        : 'text-[#bdbdbd]'
+                    }`}
+                  >
+                    {log}
+                  </div>
+                ))}
+                {isRunning && (
+                  <div className="flex items-center gap-2 text-[#8052ff] animate-pulse">
+                    <span>▶</span>
+                    <span>Awaiting agent response token stream...</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 4: Approved Test Cases Preview & TMS Exporters */}
+        {/* Step 4: Verified Test Cases & Enterprise TMS Exports */}
         {currentStep === 4 && result && (
-          <div className="max-w-[1080px] space-y-12">
-            
-            {/* Score Banner */}
-            <div className="glass-surface p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-8 max-w-[1040px]">
+            {/* Telemetry Summary Banner */}
+            <div className="glass-surface p-7 md:p-8 grid grid-cols-2 md:grid-cols-4 gap-6">
               <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <span className="text-[#15846e] text-xl font-bold">✓</span>
-                  <span className="text-white text-[24px] font-normal tracking-[-0.02em]">
-                    Quality Audit Converged ({result.highest_score}%)
-                  </span>
+                <div className="text-[#9a9a9a] text-xs font-mono uppercase tracking-wider mb-1">
+                  Suite Status
                 </div>
-                <p className="text-[#9a9a9a] font-[200] text-sm">
-                  Suite refined in {result.total_iterations} iterations with Monotonic Regression Safeguard confirmed.
-                </p>
+                <div className="text-[#15846e] text-xl font-mono font-medium">
+                  CONVERGED
+                </div>
               </div>
 
-              {/* Exporters buttons */}
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleExport('jira')}
-                  className="text-xs px-4 py-2.5 rounded-full bg-[#8052ff] text-white font-mono uppercase tracking-wider border-none cursor-pointer hover:opacity-90 transition-opacity"
-                >
-                  Jira JSON
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExport('testrail')}
-                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.06] text-white font-mono uppercase tracking-wider border-none cursor-pointer hover:bg-white/[0.1] transition-colors"
-                >
-                  TestRail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExport('markdown')}
-                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.06] text-white font-mono uppercase tracking-wider border-none cursor-pointer hover:bg-white/[0.1] transition-colors"
-                >
-                  XMind / MD
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExport('junit')}
-                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.06] text-white font-mono uppercase tracking-wider border-none cursor-pointer hover:bg-white/[0.1] transition-colors"
-                >
-                  JUnit XML
-                </button>
+              <div>
+                <div className="text-[#9a9a9a] text-xs font-mono uppercase tracking-wider mb-1">
+                  Rubric Score
+                </div>
+                <div className="text-[#ffb829] text-xl font-mono font-medium">
+                  {result.highest_score.toFixed(1)} / 100
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[#9a9a9a] text-xs font-mono uppercase tracking-wider mb-1">
+                  Passes Taken
+                </div>
+                <div className="text-white text-xl font-mono font-medium">
+                  {result.iterations_taken} Iterations
+                </div>
+              </div>
+
+              <div>
+                <div className="text-[#9a9a9a] text-xs font-mono uppercase tracking-wider mb-1">
+                  Total Cases
+                </div>
+                <div className="text-white text-xl font-mono font-medium">
+                  {result.best_test_cases.length} Items
+                </div>
               </div>
             </div>
 
-            {exportNotice && (
-              <div className="text-[#ffb829] text-xs font-mono">
-                ✓ {exportNotice}
-              </div>
-            )}
-
-            {/* 4 Rubric Dials */}
-            {result.iterations[result.iterations.length - 1] && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 pt-2">
-                {[
-                  { label: 'Completeness', score: result.iterations[result.iterations.length - 1].rubric.completeness },
-                  { label: 'Coverage', score: result.iterations[result.iterations.length - 1].rubric.coverage },
-                  { label: 'Redundancy', score: result.iterations[result.iterations.length - 1].rubric.redundancy },
-                  { label: 'Feasibility', score: result.iterations[result.iterations.length - 1].rubric.feasibility },
-                ].map((dim) => (
-                  <div key={dim.label}>
-                    <div className="text-white text-[32px] font-normal tracking-[-0.03em] mb-1">
-                      {dim.score}%
-                    </div>
-                    <div className="text-[#9a9a9a] text-[11px] uppercase tracking-[0.12em] font-mono">
-                      {dim.label}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Approved Test Cases List */}
-            <div className="space-y-6 pt-4">
-              <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-                <span className="text-white text-[22px] font-normal">
-                  Approved Test Cases ({result.best_test_cases.length})
+            {/* Generated Test Cases Table */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-white text-xl font-normal tracking-[-0.02em]">
+                  Pydantic-Validated Test Suite ({result.best_test_cases.length})
+                </h3>
+                <span className="text-[#9a9a9a] text-xs font-mono">
+                  Preserved via Monotonic Guard
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentStep(1)}
-                  className="ghost-link text-xs"
-                >
-                  ↻ Test Another Specification
-                </button>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {result.best_test_cases.map((tc, idx) => (
                   <div
                     key={tc.id || idx}
-                    className="glass-surface p-7 space-y-4"
+                    className="glass-surface p-6 rounded-[20px] space-y-4 hover:border-white/[0.12] transition-colors"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.05]">
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`text-[11px] px-3 py-1 rounded-full font-mono font-bold uppercase ${
-                            tc.priority === 'p0'
-                              ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                              : 'bg-[#8052ff]/15 text-[#8052ff] border border-[#8052ff]/30'
-                          }`}
-                        >
-                          {tc.priority.toUpperCase()}
+                        <span className="text-[#ffb829] font-mono text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#ffb829]/10 border border-[#ffb829]/20">
+                          {tc.id}
                         </span>
-                        <span className="text-white text-[18px] font-normal">
+                        <h4 className="text-white font-normal text-base">
                           {tc.title}
-                        </span>
+                        </h4>
                       </div>
-                      <span className="text-[#15846e] text-xs font-mono uppercase tracking-wider">
-                        APPROVED
+                      <span className="text-xs font-mono uppercase px-2.5 py-0.5 rounded-full bg-white/[0.05] text-[#9a9a9a] self-start">
+                        PRIORITY: {tc.priority}
                       </span>
                     </div>
 
-                    <p className="text-[#bdbdbd] font-[200] text-[15px] leading-relaxed">
-                      {tc.description}
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 text-xs font-mono">
-                      <div className="bg-black/70 p-4 rounded-[14px] border border-white/[0.04]">
-                        <div className="text-[#9a9a9a] uppercase mb-2">Test Steps:</div>
-                        <ol className="list-decimal list-inside space-y-1.5 text-white/90 font-[200]">
-                          {tc.test_steps.map((s, i) => (
-                            <li key={i}>{s}</li>
-                          ))}
-                        </ol>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                      <div>
+                        <span className="text-[#9a9a9a] uppercase block mb-1">Preconditions:</span>
+                        <p className="text-[#bdbdbd] font-[200] leading-relaxed">
+                          {tc.preconditions}
+                        </p>
                       </div>
-
-                      <div className="bg-black/70 p-4 rounded-[14px] border border-white/[0.04]">
-                        <div className="text-[#9a9a9a] uppercase mb-2">Expected Results:</div>
-                        <ul className="list-disc list-inside space-y-1.5 text-white/90 font-[200]">
-                          {tc.expected_results.map((r, i) => (
-                            <li key={i}>{r}</li>
-                          ))}
-                        </ul>
+                      <div>
+                        <span className="text-[#9a9a9a] uppercase block mb-1">Expected Outcome:</span>
+                        <p className="text-white font-[200] leading-relaxed">
+                          {tc.expected_results}
+                        </p>
                       </div>
+                    </div>
+
+                    <div>
+                      <span className="text-[#9a9a9a] text-xs font-mono uppercase block mb-1">
+                        Execution Steps:
+                      </span>
+                      <ol className="list-decimal list-inside text-xs font-mono text-[#bdbdbd] font-[200] space-y-1 pl-1">
+                        {Array.isArray(tc.test_steps) ? (
+                          tc.test_steps.map((st, sIdx) => <li key={sIdx}>{st}</li>)
+                        ) : (
+                          <li>{tc.test_steps}</li>
+                        )}
+                      </ol>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
+            {/* Enterprise TMS Export Action Strip */}
+            <div className="glass-surface p-7 md:p-8 rounded-[24px] space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-white text-base font-normal mb-1">
+                    Export Converged Test Suite to Enterprise Systems
+                  </h4>
+                  <p className="text-[#9a9a9a] text-xs font-[200]">
+                    Strict schema validation. Zero formulas, injection-safe, and ready for CI/CD ingestion.
+                  </p>
+                </div>
+                {exportNotice && (
+                  <span className="text-[#15846e] text-xs font-mono animate-fade-in">
+                    ✓ {exportNotice}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  onClick={() => handleExport('jira')}
+                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.04] hover:bg-[#8052ff] hover:text-white text-[#bdbdbd] transition-all border border-white/[0.08] cursor-pointer font-mono uppercase tracking-wider"
+                >
+                  Download Jira Cloud (.json)
+                </button>
+                <button
+                  onClick={() => handleExport('testrail')}
+                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.04] hover:bg-[#8052ff] hover:text-white text-[#bdbdbd] transition-all border border-white/[0.08] cursor-pointer font-mono uppercase tracking-wider"
+                >
+                  Download TestRail (.csv)
+                </button>
+                <button
+                  onClick={() => handleExport('junit')}
+                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.04] hover:bg-[#8052ff] hover:text-white text-[#bdbdbd] transition-all border border-white/[0.08] cursor-pointer font-mono uppercase tracking-wider"
+                >
+                  Download JUnit XML (.xml)
+                </button>
+                <button
+                  onClick={() => handleExport('markdown')}
+                  className="text-xs px-4 py-2.5 rounded-full bg-white/[0.04] hover:bg-[#8052ff] hover:text-white text-[#bdbdbd] transition-all border border-white/[0.08] cursor-pointer font-mono uppercase tracking-wider"
+                >
+                  Download Mind-Map (.md)
+                </button>
+                <button
+                  onClick={() => setCurrentStep(1)}
+                  className="ghost-link ml-auto text-xs"
+                >
+                  Start New Session ↺
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

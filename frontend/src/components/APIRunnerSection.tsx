@@ -23,7 +23,7 @@ const SAMPLE_ENDPOINTS: APIEndpointDefinition[] = [
     id: 'ep-metadata',
     method: 'GET',
     path: '/latest/meta-data/iam/security-credentials',
-    summary: 'Simulated AWS Metadata Endpoint (SSRF Test)',
+    summary: 'AWS Metadata Endpoint (SSRF Test)',
     description: 'Cloud metadata probe to verify CodeBrain IP guard and SSRF blocker.',
     parameters: [],
     assertions: [
@@ -78,215 +78,204 @@ async def test_${selectedEndpoint.id}():
     URL.revokeObjectURL(url);
 
     setExportNotice('Generated self-contained Pytest + HTTPX test module.');
-    setTimeout(() => setExportNotice(null), 3000);
+    setTimeout(() => setExportNotice(null), 3500);
   };
 
   return (
-    <section id="apirunner" className="relative w-full bg-black py-28 md:py-36 overflow-hidden border-t border-white/[0.05]">
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12">
+    <section id="apirunner" className="relative w-full bg-black py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
+      <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12">
         
         {/* Section Header */}
-        <div className="mb-16">
+        <div className="mb-14">
           <span className="section-label">
             CLOSED-LOOP HTTPX EXECUTION ENGINE
           </span>
-          <h2 className="text-white text-[42px] sm:text-[56px] md:text-[72px] lg:text-[78px] font-normal leading-[1.08] tracking-[-0.038em] mb-5">
+          <h2 className="text-white text-[38px] sm:text-[52px] md:text-[64px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
             Contract verification. Zero SSRF risk.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[560px] leading-[1.7]">
-            Directly executes OpenAPI 3.x and Postman collections asynchronously via <code className="text-white font-mono text-sm">httpx</code>, evaluating JSONPath assertions while enforcing IP pinning and TLS verification.
+          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[580px] leading-[1.7]">
+            Directly executes OpenAPI 3.x and Postman collections asynchronously via <code className="text-white font-mono text-xs px-2 py-0.5 rounded bg-white/[0.06]">httpx</code>, evaluating JSONPath assertions while enforcing IP pinning and TLS verification.
           </p>
         </div>
 
-        {/* Live Runner Console */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+        {/* Two-Column Workbench Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
           
-          {/* Left Column: Endpoint Configurator */}
-          <div className="lg:col-span-6 space-y-6">
+          {/* Left Column: Spec Configuration */}
+          <div className="lg:col-span-5 glass-surface p-7 md:p-8 space-y-6">
             
-            {/* Quick Test Target Selector */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedEndpoint(SAMPLE_ENDPOINTS[0]);
-                  setTargetBaseUrl('https://api.payment.service');
-                }}
-                className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-all duration-200 font-mono ${
-                  selectedEndpoint.id === 'ep-checkout'
-                    ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
-                    : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
-                }`}
-              >
-                POST /checkout (Standard Flow)
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedEndpoint(SAMPLE_ENDPOINTS[1]);
-                  setTargetBaseUrl('http://169.254.169.254');
-                }}
-                className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-all duration-200 font-mono ${
-                  selectedEndpoint.id === 'ep-metadata'
-                    ? 'bg-red-500/20 text-red-400 font-medium border border-red-500/30'
-                    : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
-                }`}
-              >
-                ⚠️ Metadata (SSRF Guard Test)
-              </button>
-            </div>
-
-            {/* Target Base URL */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[#9a9a9a] text-[11px] uppercase font-semibold font-mono tracking-wider mb-2">
-                  Target Host (SSRF & DNS Guarded)
-                </label>
-                <input
-                  type="text"
-                  value={targetBaseUrl}
-                  onChange={(e) => setTargetBaseUrl(e.target.value)}
-                  className="w-full bg-black/70 text-white font-mono text-[14px] rounded-[14px] px-4 py-3.5 border border-white/[0.08] focus:border-[#8052ff] focus:outline-none transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#9a9a9a] text-[11px] uppercase font-semibold font-mono tracking-wider mb-2">
-                  Endpoint Spec
-                </label>
-                <div className="flex items-center gap-3 bg-black/60 rounded-[14px] px-4 py-3.5 border border-white/[0.06]">
-                  <span className="text-[#8052ff] font-mono font-bold text-xs">
-                    {selectedEndpoint.method}
-                  </span>
-                  <span className="text-white font-mono text-sm truncate">
-                    {selectedEndpoint.path}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Programmatic Assertions */}
-            <div className="space-y-2">
-              <div className="text-[#9a9a9a] text-[11px] uppercase tracking-wider font-mono">
-                Evaluated Assertions:
-              </div>
-              <div className="space-y-2">
-                {selectedEndpoint.assertions.map((a, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-4 py-2.5 rounded-[12px] bg-black/40 border border-white/[0.04] text-xs font-mono"
+            {/* Endpoint Selector Tabs */}
+            <div className="space-y-3">
+              <span className="text-[#9a9a9a] text-[11px] font-mono uppercase tracking-wider block">
+                Select API Test Case Target:
+              </span>
+              <div className="flex flex-col gap-2">
+                {SAMPLE_ENDPOINTS.map((ep) => (
+                  <button
+                    key={ep.id}
+                    onClick={() => {
+                      setSelectedEndpoint(ep);
+                      setRunResult(null);
+                    }}
+                    className={`p-3.5 rounded-[14px] text-left transition-all border cursor-pointer font-mono text-xs ${
+                      selectedEndpoint.id === ep.id
+                        ? 'bg-[#8052ff]/15 border-[#8052ff] text-white'
+                        : 'bg-black/50 border-white/[0.06] text-[#9a9a9a] hover:border-white/[0.15]'
+                    }`}
                   >
-                    <span className="text-[#bdbdbd]">{a.expression}</span>
-                    <span className="text-[#ffb829] text-[10px]">VERIFY</span>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`font-bold ${ep.method === 'POST' ? 'text-[#8052ff]' : 'text-[#ffb829]'}`}>
+                        {ep.method}
+                      </span>
+                      <span className="text-white truncate">{ep.path}</span>
+                    </div>
+                    <div className="text-[11px] text-[#9a9a9a] font-[200] truncate">
+                      {ep.summary}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Host */}
+            <div className="space-y-2">
+              <label className="text-[#9a9a9a] text-[11px] font-mono uppercase tracking-wider block">
+                Target Host (SSRF & DNS Guarded)
+              </label>
+              <input
+                type="text"
+                value={targetBaseUrl}
+                onChange={(e) => setTargetBaseUrl(e.target.value)}
+                className="w-full bg-black/70 text-white font-mono text-xs rounded-[12px] p-3.5 border border-white/[0.08] focus:border-[#8052ff] focus:outline-none"
+              />
+            </div>
+
+            {/* Evaluated Assertions */}
+            <div className="space-y-2">
+              <span className="text-[#9a9a9a] text-[11px] font-mono uppercase tracking-wider block">
+                Contract Assertions Checklist
+              </span>
+              <div className="bg-black/70 rounded-[14px] p-4 border border-white/[0.06] space-y-2">
+                {selectedEndpoint.assertions.map((ast, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-[#bdbdbd]">{ast.expression}</span>
+                    <span className="text-[#ffb829] text-[10px] uppercase font-semibold">Verify</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="flex items-center gap-5 pt-3">
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
               <button
-                type="button"
                 onClick={handleRunTest}
                 disabled={isExecuting}
-                className="btn-primary-pill"
+                className="btn-primary-pill w-full sm:w-auto"
               >
-                {isExecuting ? 'Running Async Client...' : 'Execute Contract Test ⚡'}
+                {isExecuting ? 'Running Live HTTPX...' : 'Execute Contract Test ⚡'}
               </button>
 
               <button
-                type="button"
                 onClick={handleDownloadPytest}
-                className="ghost-link text-xs"
+                className="ghost-link text-xs whitespace-nowrap"
               >
                 Export Pytest Module ↓
               </button>
             </div>
 
             {exportNotice && (
-              <div className="text-[#ffb829] text-xs font-mono">
+              <div className="text-xs font-mono text-[#15846e] pt-1">
                 ✓ {exportNotice}
               </div>
             )}
+
           </div>
 
-          {/* Right Column: Glass Terminal Output */}
-          <div className="lg:col-span-6 glass-surface overflow-hidden">
+          {/* Right Column: Execution Terminal */}
+          <div className="lg:col-span-7 bg-black rounded-[24px] border border-white/[0.08] overflow-hidden">
             <div className="terminal-bar">
               <div className="terminal-dots">
                 <div className="terminal-dot bg-[#ff5f56]" />
                 <div className="terminal-dot bg-[#ffbd2e]" />
                 <div className="terminal-dot bg-[#27c93f]" />
               </div>
-              <span className="text-xs font-mono text-[#9a9a9a]">
-                httpx.AsyncClient // TLS 1.3
+              <span className="text-[#9a9a9a] text-[11px] font-mono">
+                httpx.AsyncClient // TLS 1.3 // DNS Pinned
               </span>
+              <div className="w-10" />
             </div>
 
-            <div className="p-8 space-y-6">
-              {runResult ? (
-                <div className="space-y-5 animate-fadeIn">
-                  {/* Status Headline */}
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+            <div className="p-6 font-mono text-xs space-y-3 min-h-[360px] bg-black/95">
+              {!runResult && !isExecuting && (
+                <div className="text-[#9a9a9a] flex items-center gap-2 h-64 justify-center">
+                  <span>&gt;</span>
+                  <span>Click "Execute Contract Test" to trigger live async execution</span>
+                </div>
+              )}
+
+              {isExecuting && (
+                <div className="space-y-2 text-[#bdbdbd]">
+                  <div className="text-[#8052ff] animate-pulse">
+                    &gt; Initializing async socket connection...
+                  </div>
+                  <div>&gt; Performing DNS resolution with IP pinning...</div>
+                  <div>&gt; Validating destination against SSRF blocklist...</div>
+                </div>
+              )}
+
+              {runResult && (
+                <div className="space-y-4">
+                  {/* Status row */}
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`w-3 h-3 rounded-full ${
-                          runResult.passed ? 'bg-[#15846e]' : 'bg-red-500'
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase ${
+                          runResult.status_code === 200
+                            ? 'bg-[#15846e]/20 text-[#15846e] border border-[#15846e]/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
                         }`}
-                      />
-                      <span className="text-white text-[20px] font-normal font-mono">
-                        HTTP {runResult.status_code} {runResult.passed ? 'OK' : 'DENIED'}
+                      >
+                        HTTP {runResult.status_code} {runResult.status_code === 200 ? 'OK' : 'DENIED'}
+                      </span>
+                      <span className="text-[#9a9a9a]">
+                        Latency: <span className="text-white">{runResult.latency_ms}ms</span>
                       </span>
                     </div>
-                    <span className="text-[#ffb829] font-mono text-xs">
-                      {runResult.latency_ms}ms
+
+                    <div className="text-[#15846e] text-[11px]">
+                      TLS 1.3 SECURE
+                    </div>
+                  </div>
+
+                  {/* Execution Trace */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="text-[#ffb829]">
+                      &gt; {selectedEndpoint.method} {targetBaseUrl}{selectedEndpoint.path}
+                    </div>
+                    {runResult.assertions.map((a, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className={a.passed ? 'text-[#15846e]' : 'text-red-400'}>
+                          {a.passed ? '✓ PASS' : '✗ FAIL'}
+                        </span>
+                        <span className="text-[#bdbdbd]">{a.name}:</span>
+                        <span className="text-white">{a.detail}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Response Body Preview */}
+                  <div className="space-y-1 pt-2">
+                    <span className="text-[#9a9a9a] text-[10px] uppercase">
+                      Response Payload:
                     </span>
+                    <pre className="bg-black/80 p-4 rounded-[12px] border border-white/[0.05] text-[11px] text-[#bdbdbd] overflow-x-auto leading-relaxed">
+                      {JSON.stringify(runResult.response_body, null, 2)}
+                    </pre>
                   </div>
-
-                  {/* Security Telemetry */}
-                  <div className="grid grid-cols-2 gap-3 text-xs font-mono">
-                    <div className="bg-black/70 p-3.5 rounded-[12px] border border-white/[0.04]">
-                      <div className="text-[#9a9a9a] mb-1">TLS Verification:</div>
-                      <div className={runResult.tls_verified ? 'text-[#15846e]' : 'text-red-400'}>
-                        {runResult.tls_verified ? 'VERIFIED (Strict)' : 'BLOCKED'}
-                      </div>
-                    </div>
-                    <div className="bg-black/70 p-3.5 rounded-[12px] border border-white/[0.04]">
-                      <div className="text-[#9a9a9a] mb-1">IP Pinning:</div>
-                      <div className="text-white truncate">
-                        {runResult.ip_pinned}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Assertion or Error Results */}
-                  {runResult.error_message ? (
-                    <div className="p-4 rounded-[14px] bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono leading-relaxed">
-                      ⚠️ {runResult.error_message}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="text-[#9a9a9a] text-xs font-mono uppercase">
-                        Contract Assertions:
-                      </div>
-                      {runResult.assertions_results.map((ar, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between p-3 rounded-[12px] bg-black/60 border border-white/[0.04] text-xs font-mono"
-                        >
-                          <span className="text-[#bdbdbd]">{ar.expression}</span>
-                          <span className="text-[#15846e] font-semibold">PASSED ✓</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="py-20 text-center text-[#9a9a9a] font-[200] text-sm font-mono">
-                  &gt; Waiting for execution trigger...
                 </div>
               )}
             </div>
+
           </div>
 
         </div>

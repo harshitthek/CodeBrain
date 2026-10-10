@@ -37,75 +37,75 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
     if (!ctx) return;
 
     let animationFrameId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || 600);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+    let width = 600;
+    let height = 600;
 
-    const handleResize = () => {
-      if (!canvas.parentElement) return;
-      width = canvas.width = canvas.parentElement.clientWidth;
-      height = canvas.height = canvas.parentElement.clientHeight;
-      initParticles();
+    const setupCanvasResolution = () => {
+      const parent = canvas.parentElement;
+      if (!parent) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      width = parent.clientWidth || 600;
+      height = parent.clientHeight || 600;
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+
+      ctx.scale(dpr, dpr);
     };
 
-    window.addEventListener('resize', handleResize);
+    setupCanvasResolution();
 
-    // Mouse coordinates relative to canvas center
     let mouseX = 0;
     let mouseY = 0;
     let targetMouseX = 0;
     let targetMouseY = 0;
-    let isHovered = false;
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
       targetMouseX = e.clientX - rect.left - width / 2;
       targetMouseY = e.clientY - rect.top - height / 2;
-      isHovered = true;
     };
 
     const handleMouseLeave = () => {
       targetMouseX = 0;
       targetMouseY = 0;
-      isHovered = false;
     };
 
-    canvas.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseleave', handleMouseLeave);
 
     const particles: Particle[] = [];
-    const TOTAL_BRAIN_PARTICLES = 1400;
-    const TOTAL_AMBIENT_PARTICLES = 160;
+    const TOTAL_BRAIN_PARTICLES = 1750;
+    const TOTAL_AMBIENT_PARTICLES = 180;
 
-    // Generate mathematical 3D brain shape with dual hemispheres
-    const generateBrainCoordinates = (index: number, total: number) => {
-      // Split into left and right hemispheres
+    // Generate grand spherical 3D brain shape with dual hemispheres
+    const generateBrainCoordinates = (index: number) => {
       const hemisphere = index % 2 === 0 ? 1 : -1;
       const u = Math.random();
       const v = Math.random();
       const theta = u * 2 * Math.PI;
       const phi = Math.acos(2 * v - 1);
 
-      // Parametric brain ellipsoid with cranial curvature and sulci/gyri modulation
-      const radiusX = 140 + 15 * Math.sin(phi * 4) * Math.cos(theta * 3);
-      const radiusY = 110 + 20 * Math.cos(phi * 3);
-      const radiusZ = 160 + 15 * Math.sin(theta * 5);
+      // Grand volumetric brain radii
+      const radiusX = 250 + 25 * Math.sin(phi * 4) * Math.cos(theta * 3);
+      const radiusY = 220 + 30 * Math.cos(phi * 3);
+      const radiusZ = 240 + 25 * Math.sin(theta * 5);
 
       // Separation between hemispheres
-      const separation = 28 * hemisphere;
+      const separation = 36 * hemisphere;
 
-      let x = (Math.sin(phi) * Math.cos(theta) * radiusX * 0.72) + separation;
-      let y = (Math.cos(phi) * radiusY * 0.85);
-      let z = (Math.sin(phi) * Math.sin(theta) * radiusZ * 0.85);
+      let x = Math.sin(phi) * Math.cos(theta) * radiusX * 0.86 + separation;
+      let y = Math.cos(phi) * radiusY * 0.95;
+      let z = Math.sin(phi) * Math.sin(theta) * radiusZ * 0.88;
 
-      // Flatten bottom slightly for temporal lobes
-      if (y > 30) {
-        y *= 0.8;
-      }
-      // Add frontal lobe projection
-      if (z > 40) {
-        x *= 0.92;
-        y *= 0.95;
-      }
+      // Natural cortical interior and surface scatter
+      const internalScatter = 0.8 + Math.random() * 0.28;
+      x *= internalScatter;
+      y *= internalScatter;
+      z *= internalScatter;
 
       return { x, y, z };
     };
@@ -113,10 +113,12 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
     const initParticles = () => {
       particles.length = 0;
 
-      // Brain particles
+      // 1. Brain constellation particles
       for (let i = 0; i < TOTAL_BRAIN_PARTICLES; i++) {
-        const coords = generateBrainCoordinates(i, TOTAL_BRAIN_PARTICLES);
+        const coords = generateBrainCoordinates(i);
         const color = CHROMATIC_PALETTE[Math.floor(Math.random() * CHROMATIC_PALETTE.length)];
+        const size = Math.random() < 0.25 ? 3.6 : Math.random() < 0.65 ? 2.6 : 1.9;
+
         particles.push({
           x: coords.x,
           y: coords.y,
@@ -124,10 +126,10 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
           baseX: coords.x,
           baseY: coords.y,
           baseZ: coords.z,
-          vx: (Math.random() - 0.5) * 0.3,
-          vy: (Math.random() - 0.5) * 0.3,
-          vz: (Math.random() - 0.5) * 0.3,
-          size: 2.2 + Math.random() * 2.8,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
+          vz: (Math.random() - 0.5) * 0.35,
+          size,
           color,
           angle: Math.random() * Math.PI * 2,
           rotSpeed: (Math.random() - 0.5) * 0.04,
@@ -136,206 +138,148 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
         });
       }
 
-      // Ambient drifting particles in void
+      // 2. Ambient drifting particles in surrounding void
       for (let i = 0; i < TOTAL_AMBIENT_PARTICLES; i++) {
-        const ambientSpreadX = (Math.random() - 0.5) * width * 1.1;
-        const ambientSpreadY = (Math.random() - 0.5) * height * 1.1;
-        const ambientSpreadZ = (Math.random() - 0.5) * 400;
+        const spreadX = (Math.random() - 0.5) * (width * 1.3);
+        const spreadY = (Math.random() - 0.5) * (height * 1.3);
+        const spreadZ = (Math.random() - 0.5) * 450;
         const color = CHROMATIC_PALETTE[Math.floor(Math.random() * CHROMATIC_PALETTE.length)];
+
         particles.push({
-          x: ambientSpreadX,
-          y: ambientSpreadY,
-          z: ambientSpreadZ,
-          baseX: ambientSpreadX,
-          baseY: ambientSpreadY,
-          baseZ: ambientSpreadZ,
+          x: spreadX,
+          y: spreadY,
+          z: spreadZ,
+          baseX: spreadX,
+          baseY: spreadY,
+          baseZ: spreadZ,
           vx: (Math.random() - 0.5) * 0.2,
           vy: (Math.random() - 0.5) * 0.2,
           vz: (Math.random() - 0.5) * 0.2,
-          size: 2.0 + Math.random() * 2.0,
+          size: 1.6 + Math.random() * 1.6,
           color,
           angle: Math.random() * Math.PI * 2,
           rotSpeed: (Math.random() - 0.5) * 0.02,
           isAmbient: true,
-          alpha: 0.25 + Math.random() * 0.25,
+          alpha: 0.15 + Math.random() * 0.3,
         });
       }
     };
 
     initParticles();
 
-    // Helper: Draw tiny outlined equilateral triangle
-    const drawOutlinedTriangle = (
-      context: CanvasRenderingContext2D,
-      cx: number,
-      cy: number,
+    const handleResize = () => {
+      setupCanvasResolution();
+      initParticles();
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    let rotationY = 0;
+    let rotationX = 0.15;
+    const fov = 580;
+
+    const drawTriangle = (
+      px: number,
+      py: number,
       size: number,
       angle: number,
       color: string,
       alpha: number
     ) => {
-      context.save();
-      context.translate(cx, cy);
-      context.rotate(angle);
-      context.beginPath();
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(angle);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.15;
+      ctx.globalAlpha = Math.max(0.08, Math.min(1, alpha));
 
-      const r = size;
-      const angleStep = (Math.PI * 2) / 3;
-      // Equilateral triangle vertices
-      for (let i = 0; i < 3; i++) {
-        const a = i * angleStep - Math.PI / 2;
-        const px = r * Math.cos(a);
-        const py = r * Math.sin(a);
-        if (i === 0) context.moveTo(px, py);
-        else context.lineTo(px, py);
+      ctx.beginPath();
+      const h = size * 1.3;
+      ctx.moveTo(0, -h * 0.66);
+      ctx.lineTo(size * 0.86, h * 0.33);
+      ctx.lineTo(-size * 0.86, h * 0.33);
+      ctx.closePath();
+      ctx.stroke();
+
+      if (size > 2.7) {
+        ctx.fillStyle = color;
+        ctx.globalAlpha = alpha * 0.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, 0.8, 0, Math.PI * 2);
+        ctx.fill();
       }
-      context.closePath();
 
-      context.strokeStyle = color;
-      context.lineWidth = 1.2;
-      context.globalAlpha = Math.max(0.05, Math.min(1, alpha));
-      context.stroke();
-      context.restore();
+      ctx.restore();
     };
 
-    let rotationAngleY = 0;
-    let rotationAngleX = 0;
-    let pulseTime = 0;
-
     const render = () => {
-      pulseTime += 0.015;
+      ctx.clearRect(0, 0, width, height);
 
-      // Smooth mouse follow
       mouseX += (targetMouseX - mouseX) * 0.05;
       mouseY += (targetMouseY - mouseY) * 0.05;
 
-      // Base rotation with gentle mouse tilt
-      rotationAngleY += 0.0035;
-      rotationAngleX = Math.sin(pulseTime * 0.5) * 0.08 + (mouseY / height) * 0.25;
-      const dynamicRotY = rotationAngleY + (mouseX / width) * 0.45;
+      rotationY += 0.0035 + (mouseX / width) * 0.004;
+      rotationX = 0.14 + (mouseY / height) * 0.12;
 
-      // Clear with pure void
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, width, height);
+      const cosY = Math.cos(rotationY);
+      const sinY = Math.sin(rotationY);
+      const cosX = Math.cos(rotationX);
+      const sinX = Math.sin(rotationX);
 
-      const cosY = Math.cos(dynamicRotY);
-      const sinY = Math.sin(dynamicRotY);
-      const cosX = Math.cos(rotationAngleX);
-      const sinX = Math.sin(rotationAngleX);
-
-      const fov = 420;
       const centerX = width / 2;
       const centerY = height / 2;
 
-      // Transform and sort particles by depth for correct rendering
       const projected = [];
 
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
 
-        // Dynamic organic breathing oscillation
+        p.baseX += p.vx;
+        p.baseY += p.vy;
+        p.baseZ += p.vz;
         p.angle += p.rotSpeed;
 
-        let curX = p.baseX;
-        let curY = p.baseY;
-        let curZ = p.baseZ;
-
         if (!p.isAmbient) {
-          const breathing = 1 + Math.sin(pulseTime * 2 + p.baseZ * 0.02) * 0.035;
-          curX *= breathing;
-          curY *= breathing;
-          curZ *= breathing;
-
-          // Interactive mouse repelling wave
-          if (isHovered) {
-            const dx = curX - mouseX;
-            const dy = curY - mouseY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 120 && dist > 1) {
-              const force = (120 - dist) / 120;
-              curX += (dx / dist) * force * 18;
-              curY += (dy / dist) * force * 18;
-            }
+          const distSq = p.baseX * p.baseX + p.baseY * p.baseY + p.baseZ * p.baseZ;
+          if (distSq > 380 * 380) {
+            p.vx *= -1;
+            p.vy *= -1;
+            p.vz *= -1;
           }
-        } else {
-          // Drift ambient particles
-          p.baseX += p.vx;
-          p.baseY += p.vy;
-          if (Math.abs(p.baseX) > width * 0.6) p.vx *= -1;
-          if (Math.abs(p.baseY) > height * 0.6) p.vy *= -1;
         }
 
-        // 3D rotation Y
-        let x1 = curX * cosY - curZ * sinY;
-        let z1 = curZ * cosY + curX * sinY;
+        let x1 = p.baseX * cosY - p.baseZ * sinY;
+        let z1 = p.baseZ * cosY + p.baseX * sinY;
 
-        // 3D rotation X
-        let y2 = curY * cosX - z1 * sinX;
-        let z2 = z1 * cosX + curY * sinX;
+        let y2 = p.baseY * cosX - z1 * sinX;
+        let z2 = z1 * cosX + p.baseY * sinX;
 
-        // Perspective projection
-        const depth = z2 + 380;
-        if (depth > 10) {
-          const scale = fov / depth;
-          const screenX = centerX + x1 * scale;
-          const screenY = centerY + y2 * scale;
-          const renderedSize = Math.max(1, p.size * scale);
-          const depthAlpha = p.alpha * Math.min(1, Math.max(0.1, (depth / 420)));
+        const depth = fov / (fov + z2 + 280);
+        const projX = centerX + x1 * depth;
+        const projY = centerY + y2 * depth;
 
-          projected.push({
-            p,
-            screenX,
-            screenY,
-            z: z2,
-            size: renderedSize,
-            color: p.color,
-            angle: p.angle,
-            alpha: depthAlpha,
-          });
-        }
+        const depthAlpha = p.isAmbient
+          ? p.alpha
+          : Math.max(0.18, Math.min(1, ((z2 + 320) / 640) * p.alpha));
+
+        projected.push({
+          x: projX,
+          y: projY,
+          z: z2,
+          size: p.size * depth * 1.15,
+          angle: p.angle,
+          color: p.color,
+          alpha: depthAlpha,
+        });
       }
 
-      // Sort back-to-front
       projected.sort((a, b) => a.z - b.z);
 
-      // Render subtle synaptic connection lines between close brain nodes
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < projected.length; i += 7) {
-        const p1 = projected[i];
-        if (p1.p.isAmbient) continue;
-
-        for (let j = i + 1; j < Math.min(i + 14, projected.length); j += 2) {
-          const p2 = projected[j];
-          if (p2.p.isAmbient) continue;
-
-          const dx = p1.screenX - p2.screenX;
-          const dy = p1.screenY - p2.screenY;
-          const distSq = dx * dx + dy * dy;
-
-          if (distSq < 1600) {
-            const lineAlpha = (1 - Math.sqrt(distSq) / 40) * 0.22;
-            ctx.beginPath();
-            ctx.moveTo(p1.screenX, p1.screenY);
-            ctx.lineTo(p2.screenX, p2.screenY);
-            ctx.strokeStyle = p1.color;
-            ctx.globalAlpha = lineAlpha;
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Render all triangular particles
       for (let i = 0; i < projected.length; i++) {
-        const item = projected[i];
-        drawOutlinedTriangle(
-          ctx,
-          item.screenX,
-          item.screenY,
-          item.size,
-          item.angle,
-          item.color,
-          item.alpha
-        );
+        const p = projected[i];
+        if (p.x >= -30 && p.x <= width + 30 && p.y >= -30 && p.y <= height + 30) {
+          drawTriangle(p.x, p.y, p.size, p.angle, p.color, p.alpha);
+        }
       }
 
       animationFrameId = requestAnimationFrame(render);
@@ -346,13 +290,13 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
-      canvas.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, []);
 
   return (
-    <div className={`relative w-full h-[520px] md:h-[620px] lg:h-[700px] flex items-center justify-center overflow-hidden ${className}`}>
+    <div className={`relative w-full h-[540px] md:h-[620px] lg:h-[680px] flex items-center justify-center overflow-hidden ${className}`}>
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair block"

@@ -78,19 +78,19 @@ export const HybridRAGSection: React.FC = () => {
   const results = SAMPLE_KNOWLEDGE[activeQueryKey] || SAMPLE_KNOWLEDGE.webhook;
 
   return (
-    <section id="rag" className="relative w-full bg-black py-28 md:py-36 overflow-hidden border-t border-white/[0.05]">
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12">
+    <section id="rag" className="relative w-full bg-black py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
+      <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12">
         
         {/* Section Header */}
-        <div className="mb-16">
+        <div className="mb-14">
           <span className="section-label">
             ZERO-DOCKER HYBRID RETRIEVAL (RAG)
           </span>
-          <h2 className="text-white text-[42px] sm:text-[56px] md:text-[72px] lg:text-[78px] font-normal leading-[1.08] tracking-[-0.038em] mb-5">
+          <h2 className="text-white text-[38px] sm:text-[52px] md:text-[64px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
             Lexical BM25 meets semantic dense fusion.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[560px] leading-[1.7]">
-            Combines pure-Python <code className="text-white font-mono text-sm">PureBM25Index</code> with local SQLite Chroma embeddings via Reciprocal Rank Fusion (RRF), running locally with zero Docker overhead.
+          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[580px] leading-[1.7]">
+            Combines pure-Python <code className="text-white font-mono text-xs px-2 py-0.5 rounded bg-white/[0.06]">PureBM25Index</code> with local SQLite Chroma embeddings via Reciprocal Rank Fusion (RRF), running locally with zero Docker overhead.
           </p>
         </div>
 
@@ -140,10 +140,10 @@ export const HybridRAGSection: React.FC = () => {
             {results.map((doc) => (
               <div
                 key={doc.id}
-                className="glass-surface p-7 space-y-3"
+                className="glass-surface p-6 sm:p-7 space-y-3"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <span className="text-white text-[19px] font-normal">
+                  <span className="text-white text-[18px] sm:text-[19px] font-normal">
                     {doc.title}
                   </span>
                   <div className="flex items-center gap-3 text-xs font-mono">

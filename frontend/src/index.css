@@ -20,7 +20,7 @@
   --leading-nav-label: 1.2;
   --tracking-nav-label: 0.35px;
   --text-body: 18px;
-  --leading-body: 1.6;
+  --leading-body: 1.65;
   --text-heading-2xs: 24px;
   --leading-heading-2xs: 1.25;
   --tracking-heading-2xs: -0.48px;
@@ -73,29 +73,43 @@
   --font-weight-bold: 700;
 }
 
-/* Global Reset & Base Typography */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@layer base {
+  *, ::before, ::after {
+    box-sizing: border-box;
+  }
 
-html {
-  background-color: #000000;
-  color: #ffffff;
-  font-family: var(--font-ppneuemontreal);
-  font-feature-settings: "ss01" on, "cv05" on;
-  scroll-behavior: smooth;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  html {
+    background-color: #000000;
+    color: #ffffff;
+    font-family: var(--font-ppneuemontreal);
+    font-feature-settings: "ss01" on, "cv05" on;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-body {
-  background-color: #000000;
-  color: #ffffff;
-  min-height: 100vh;
-  overflow-x: hidden;
-  position: relative;
+  body {
+    background-color: #000000;
+    color: #ffffff;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    margin: 0;
+    padding: 0;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 400;
+    color: #ffffff;
+    letter-spacing: -0.035em;
+    margin: 0;
+  }
+
+  p {
+    font-weight: 200;
+    line-height: 1.65;
+    margin: 0;
+  }
 }
 
 /* Ambient Velvet Background Glow (Atmospheric Depth) */
@@ -127,20 +141,7 @@ body {
   background: #333333;
 }
 
-/* Headings: strictly weight 400, negative tracking, scale over weight */
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 400;
-  color: #ffffff;
-  letter-spacing: -0.035em;
-}
-
-/* Signature ultra-light body text */
-p, .font-body-ultralight {
-  font-weight: 200;
-  line-height: 1.65;
-}
-
-/* Sleek Pill Button utility */
+/* Sleek Pill Button utility - Strict DESIGN.md Token */
 .btn-primary-pill {
   background-color: #8052ff;
   color: #ffffff;

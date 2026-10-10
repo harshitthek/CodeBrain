@@ -7,33 +7,35 @@ interface HeroSectionProps {
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onLaunchPipeline }) => {
   return (
-    <section className="relative w-full min-h-[94vh] flex items-center bg-black pt-32 pb-20 md:pt-44 md:pb-28 overflow-hidden">
+    <section className="relative w-full min-h-[92vh] flex items-center bg-black pt-36 pb-20 md:pt-44 md:pb-28 overflow-hidden">
       {/* Subtle atmospheric radial flare */}
-      <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-[#8052ff]/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute top-1/3 right-1/4 w-[600px] h-[600px] bg-[#8052ff]/10 rounded-full blur-[160px] pointer-events-none" />
 
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-8 items-center">
+      <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
           
           {/* Left Column: Monolithic Typographic Statement */}
-          <div className="lg:col-span-7 flex flex-col items-start">
+          <div className="lg:col-span-7 flex flex-col items-start pt-2">
             
             {/* Amber section marker */}
             <span className="section-label">
               L2/L3 AUTONOMOUS QUALITY PLATFORM
             </span>
 
-            {/* Display Headline: Weight 400, sculptural scale, negative tracking */}
-            <h1 className="text-white text-[46px] sm:text-[68px] md:text-[84px] lg:text-[98px] xl:text-[108px] font-normal leading-[1.04] tracking-[-0.038em] mb-8 max-w-[760px]">
-              Autonomous quality engineering on black velvet.
+            {/* Display Headline: Weight 400, sculptural scale, balanced rhythm */}
+            <h1 className="text-white text-[34px] sm:text-[44px] md:text-[50px] lg:text-[52px] xl:text-[56px] font-normal leading-[1.1] tracking-[-0.038em] mb-7 max-w-[700px]">
+              Autonomous quality engineering.
+              <br />
+              <span className="text-[#bdbdbd]">Self-healing on black velvet.</span>
             </h1>
 
             {/* Body Copy: Ultra-light 200, airy line-height, Silver Mist */}
-            <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] leading-[1.7] max-w-[520px] mb-12">
-              CodeBrain replaces brittle manual QA with an Actor-Critic reflection loop. From messy PRDs to Pydantic-validated test suites, multi-criteria rubric audits, and closed-loop HTTPX execution with monotonic regression safeguards.
+            <p className="text-[#9a9a9a] font-[200] text-[18px] md:text-[19px] leading-[1.7] max-w-[540px] mb-10">
+              CodeBrain replaces brittle manual QA with an autonomous Actor-Critic reflection loop. From messy PRDs to Pydantic-validated test suites, multi-criteria rubric audits, and closed-loop HTTPX execution with monotonic regression safeguards.
             </p>
 
             {/* Primary Action Button: Saturated violet pill */}
-            <div className="flex flex-wrap items-center gap-7 mb-16">
+            <div className="flex flex-wrap items-center gap-6 mb-14">
               <button
                 onClick={onLaunchPipeline}
                 className="btn-primary-pill"
@@ -43,16 +45,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onLaunchPipeline }) =>
 
               <a
                 href="#architecture"
-                className="ghost-link hover:text-[#ffb829]"
+                className="ghost-link hover:text-[#ffb829] py-2"
               >
                 Explore 4-Layer Architecture ↓
               </a>
             </div>
 
             {/* Pure Typographic Metrics Bar: Floating weightlessly with no boxes or borders */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 pt-6 border-t border-white/[0.07] w-full max-w-[620px]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 pt-8 border-t border-white/[0.08] w-full max-w-[620px]">
               <div>
-                <div className="text-white text-[28px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
+                <div className="text-white text-[30px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
                   &lt;0.5s
                 </div>
                 <div className="text-[#9a9a9a] text-[11px] uppercase tracking-[0.12em] font-mono">
@@ -61,7 +63,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onLaunchPipeline }) =>
               </div>
 
               <div>
-                <div className="text-white text-[28px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
+                <div className="text-white text-[30px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
                   85%+
                 </div>
                 <div className="text-[#9a9a9a] text-[11px] uppercase tracking-[0.12em] font-mono">
@@ -70,7 +72,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onLaunchPipeline }) =>
               </div>
 
               <div>
-                <div className="text-white text-[28px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
+                <div className="text-white text-[30px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
                   Zero
                 </div>
                 <div className="text-[#9a9a9a] text-[11px] uppercase tracking-[0.12em] font-mono">
@@ -79,7 +81,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onLaunchPipeline }) =>
               </div>
 
               <div>
-                <div className="text-white text-[28px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
+                <div className="text-white text-[30px] sm:text-[34px] font-normal tracking-[-0.03em] mb-1">
                   6
                 </div>
                 <div className="text-[#9a9a9a] text-[11px] uppercase tracking-[0.12em] font-mono">

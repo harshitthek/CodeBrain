@@ -17,9 +17,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/[0.05] transition-all">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
-        {/* Brand Logo Lockup */}
+    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-black/75 backdrop-blur-xl border-b border-white/[0.06] transition-all">
+      <div className="max-w-[1240px] mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
+        {/* Brand Logo Lockup: DESIGN.md token (triangular glyph + wordmark) */}
         <a
           href="#"
           onClick={(e) => {
@@ -28,9 +28,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
           }}
           className="flex items-center gap-3.5 group text-decoration-none select-none"
         >
-          {/* Triangular brand glyph with Electric Iris to Deep Verdant gradient */}
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#8052ff] opacity-40 blur-md rounded-full group-hover:opacity-75 transition-opacity" />
+            <div className="absolute inset-0 bg-[#8052ff] opacity-30 blur-md rounded-full group-hover:opacity-60 transition-opacity" />
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="relative transition-transform duration-300 group-hover:scale-105">
               <defs>
                 <linearGradient id="navBrandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -45,51 +44,44 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
             <span className="text-white text-[19px] font-normal tracking-[-0.03em]">
               CodeBrain
             </span>
-            <span className="text-[#9a9a9a] text-[10px] font-mono uppercase tracking-[0.15em] hidden sm:inline">
-              Core
+            <span className="text-[#ffb829] text-[9px] font-mono uppercase tracking-[0.2em] font-semibold">
+              CORE
             </span>
           </div>
         </a>
 
         {/* Desktop Nav Items */}
-        <nav className="hidden lg:flex items-center gap-9">
-          <button
-            onClick={() => scrollTo('pipeline')}
-            className={`ghost-link transition-colors ${activeSection === 'pipeline' ? 'text-white' : 'text-[#9a9a9a]'}`}
-          >
-            Studio
-          </button>
-          <button
-            onClick={() => scrollTo('agents')}
-            className={`ghost-link transition-colors ${activeSection === 'agents' ? 'text-white' : 'text-[#9a9a9a]'}`}
-          >
-            Agents
-          </button>
-          <button
-            onClick={() => scrollTo('apirunner')}
-            className={`ghost-link transition-colors ${activeSection === 'apirunner' ? 'text-white' : 'text-[#9a9a9a]'}`}
-          >
-            HTTPX Runner
-          </button>
-          <button
-            onClick={() => scrollTo('architecture')}
-            className={`ghost-link transition-colors ${activeSection === 'architecture' ? 'text-white' : 'text-[#9a9a9a]'}`}
-          >
-            Architecture
-          </button>
-          <button
-            onClick={() => scrollTo('rag')}
-            className={`ghost-link transition-colors ${activeSection === 'rag' ? 'text-white' : 'text-[#9a9a9a]'}`}
-          >
-            Hybrid RAG
-          </button>
+        <nav className="hidden lg:flex items-center gap-8">
+          {[
+            { id: 'pipeline', label: 'Studio' },
+            { id: 'agents', label: 'Agents' },
+            { id: 'apirunner', label: 'HTTPX Runner' },
+            { id: 'architecture', label: 'Architecture' },
+            { id: 'rag', label: 'Hybrid RAG' },
+          ].map((item) => {
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => scrollTo(item.id)}
+                className={`ghost-link transition-colors relative py-1 text-[13px] tracking-[0.04em] ${
+                  isActive ? 'text-white font-medium' : 'text-[#9a9a9a] hover:text-white'
+                }`}
+              >
+                {item.label}
+                {isActive && (
+                  <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#8052ff] rounded-full" />
+                )}
+              </button>
+            );
+          })}
         </nav>
 
-        {/* Right CTA */}
+        {/* Right CTA: Single Electric Iris Pill Button */}
         <div className="flex items-center gap-4">
           <button
             onClick={onLaunchPipeline}
-            className="btn-primary-pill shadow-[0_0_20px_-3px_rgba(128,82,255,0.4)]"
+            className="btn-primary-pill shadow-[0_0_24px_-4px_rgba(128,82,255,0.4)]"
           >
             Launch Auto-Pilot
           </button>
@@ -114,36 +106,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-black/95 backdrop-blur-2xl px-6 py-8 flex flex-col gap-6 border-b border-white/[0.08]">
-          <button
-            onClick={() => scrollTo('pipeline')}
-            className="ghost-link text-left text-base text-white"
-          >
-            Studio
-          </button>
-          <button
-            onClick={() => scrollTo('agents')}
-            className="ghost-link text-left text-base text-white"
-          >
-            Agents
-          </button>
-          <button
-            onClick={() => scrollTo('apirunner')}
-            className="ghost-link text-left text-base text-white"
-          >
-            HTTPX Runner
-          </button>
-          <button
-            onClick={() => scrollTo('architecture')}
-            className="ghost-link text-left text-base text-white"
-          >
-            Architecture
-          </button>
-          <button
-            onClick={() => scrollTo('rag')}
-            className="ghost-link text-left text-base text-white"
-          >
-            Hybrid RAG
-          </button>
+          {[
+            { id: 'pipeline', label: 'Studio' },
+            { id: 'agents', label: 'Agents' },
+            { id: 'apirunner', label: 'HTTPX Runner' },
+            { id: 'architecture', label: 'Architecture' },
+            { id: 'rag', label: 'Hybrid RAG' },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => scrollTo(item.id)}
+              className="ghost-link text-left text-base text-white py-1"
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       )}
     </header>

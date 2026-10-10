@@ -6,11 +6,11 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onLaunchPipeline }) => {
   return (
-    <footer className="relative w-full bg-black py-24 border-t border-white/[0.05]">
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12">
+    <footer className="relative w-full bg-black py-20 border-t border-white/[0.06]">
+      <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12">
         
         {/* Top footer row */}
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10 pb-16">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 pb-14 border-b border-white/[0.06]">
           <div className="flex items-center gap-3.5">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <defs>
@@ -31,7 +31,7 @@ export const Footer: React.FC<FooterProps> = ({ onLaunchPipeline }) => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-8 md:gap-11">
+          <div className="flex flex-wrap items-center gap-6 sm:gap-8">
             <a href="#pipeline" className="ghost-link">
               Studio
             </a>
@@ -57,7 +57,7 @@ export const Footer: React.FC<FooterProps> = ({ onLaunchPipeline }) => {
         </div>
 
         {/* Bottom row: copyright & ethos */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-[#9a9a9a] text-[13px] font-[200]">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-8 text-[#9a9a9a] text-[13px] font-[200]">
           <div>
             © {new Date().getFullYear()} CodeBrain. Autonomous AI Quality Engineering Platform.
           </div>
