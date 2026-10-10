@@ -166,7 +166,29 @@ LLM_PROVIDERS = {
         'temperature': 0.7,
         'max_tokens': 65000,
     },
+    'openai': {
+        'name': 'OpenAI',
+        'model': os.getenv('OPENAI_MODEL', 'gpt-4o-mini'),
+        'base_url': os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+        'temperature': 0.7,
+        'max_tokens': 4096,
+    },
+    'ollama': {
+        'name': 'Ollama (Local)',
+        'model': os.getenv('OLLAMA_MODEL', 'llama3'),
+        'base_url': os.getenv('OLLAMA_BASE_URL', 'http://localhost:11434/v1'),
+        'temperature': 0.7,
+        'max_tokens': 4096,
+    },
+    'groq': {
+        'name': 'Groq',
+        'model': os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+        'base_url': os.getenv('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
+        'temperature': 0.7,
+        'max_tokens': 4096,
+    },
 }
+
 # AI Agent LLM provider configuration, customizable per Agent
 AGENT_LLM_DEFAULTS = {
     "test_case_generator":  {"provider": "deepseek"},

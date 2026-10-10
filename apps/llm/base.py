@@ -82,8 +82,8 @@ class LLMServiceFactory:
     
     @staticmethod
     def create(provider: str, **config) -> Any:
-        """Create LLM service instance"""
-        logger = get_logger(__class__.__name__)
+        """Create LLM service instance supporting DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom endpoints"""
+        logger = get_logger("LLMServiceFactory")
         logger.info(f"Creating LLM service: provider={provider}")
         
         # Get LLM configuration
@@ -93,14 +93,24 @@ class LLMServiceFactory:
         
         # Check if provider exists
         if provider not in providers:
-            logger.warning(f"Unsupported LLM provider: {provider}, falling back to default: {default_provider}")
-            provider = default_provider
-        
-        # Get provider config (from settings.py)
-        provider_config = providers.get(provider, {}).copy()
+            if 'base_url' in config or 'model' in config:
+                logger.info(f"Using custom runtime config for provider: {provider}")
+                provider_config = {}
+            else:
+                logger.warning(f"Unsupported LLM provider: {provider}, falling back to default: {default_provider}")
+                provider = default_provider
+                provider_config = providers.get(provider, {}).copy()
+        else:
+            provider_config = providers.get(provider, {}).copy()
         
         # Get API key
-        api_key = config.get('api_key') or os.getenv(f"{provider.upper()}_API_KEY") or os.getenv("OPENAI_API_KEY") or "placeholder_key"
+        api_key = (
+            config.get('api_key')
+            or provider_config.get('api_key')
+            or os.getenv(f"{provider.upper()}_API_KEY")
+            or (os.getenv("OPENAI_API_KEY") if provider.lower() == "openai" else None)
+            or ("ollama" if provider.lower() == "ollama" else "placeholder_key")
+        )
         provider_config['api_key'] = api_key
         
         # Create callback handler
@@ -113,9 +123,17 @@ class LLMServiceFactory:
             'callbacks': callbacks,
             'verbose': True
         }
+
+        # Normalize api_base to base_url if present
+        if 'api_base' in final_config and 'base_url' not in final_config:
+            final_config['base_url'] = final_config.pop('api_base')
         
-        # Log final configuration (for debugging)
-        logger.info(f"Final config for {provider}: {final_config}")
+        # Remove metadata not accepted by ChatOpenAI
+        final_config.pop('name', None)
+        
+        # Log final configuration with masked credentials
+        safe_config = {k: ('***' if 'key' in k.lower() or 'secret' in k.lower() else v) for k, v in final_config.items()}
+        logger.info(f"Final config for {provider}: {safe_config}")
         
         # Create corresponding service instance according to provider
         if provider.lower() == "deepseek":
@@ -125,5 +143,6 @@ class LLMServiceFactory:
             from .qwen import QwenChatModel
             return QwenChatModel(**final_config)
         else:
-            logger.error(f"Unimplemented LLM provider: {provider}")
-            raise NotImplementedError(f"LLM provider {provider} is not implemented")
+            from langchain_openai import ChatOpenAI
+            logger.info(f"Instantiating universal ChatOpenAI for provider: {provider}")
+            return ChatOpenAI(**final_config)

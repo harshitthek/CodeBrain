@@ -683,4 +683,231 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('result-message').textContent = result.message;
         document.getElementById('download-link').href = `/iface_case_generator/download_file/?file_path=${encodeURIComponent(result.file_path)}`;
     }
+
+    // Closed-Loop Runner & Exporter bindings
+    const executeSuiteBtn = document.getElementById('executeSuiteBtn');
+    const exportPytestBtn = document.getElementById('exportPytestBtn');
+    const exportPostmanBtn = document.getElementById('exportPostmanBtn');
+
+    if (executeSuiteBtn) {
+        executeSuiteBtn.addEventListener('click', async function() {
+            const baseUrlInput = document.getElementById('target-base-url');
+            const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : '';
+            if (!baseUrl) {
+                alert('Please enter a target base URL (e.g. http://127.0.0.1:8000)');
+                return;
+            }
+
+            const spinner = document.getElementById('execution-spinner');
+            const resultsCard = document.getElementById('execution-results-card');
+            if (spinner) spinner.style.display = 'block';
+            if (resultsCard) resultsCard.style.display = 'none';
+            executeSuiteBtn.disabled = true;
+
+            try {
+                const response = await fetch('/iface_case_generator/api/execute/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        base_url: baseUrl,
+                        file_path: window.uploadedFilePath
+                    })
+                });
+
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText || 'Server error'}`);
+                    }
+                    throw new Error('Invalid JSON response from server');
+                }
+                if (response.ok && data.success && data.summary) {
+                    renderExecutionSummary(data.summary);
+                } else {
+                    alert('Execution failed: ' + (data.message || response.statusText || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Test execution error:', err);
+                alert('Failed to execute test suite: ' + err.message);
+            } finally {
+                if (spinner) spinner.style.display = 'none';
+                executeSuiteBtn.disabled = false;
+            }
+        });
+    }
+
+    function renderExecutionSummary(summary) {
+        const resultsCard = document.getElementById('execution-results-card');
+        if (resultsCard) resultsCard.style.display = 'block';
+
+        const statTotal = document.getElementById('stat-total');
+        const statPassed = document.getElementById('stat-passed');
+        const statFailed = document.getElementById('stat-failed');
+        const statRate = document.getElementById('stat-rate');
+        const statTime = document.getElementById('stat-time');
+
+        if (statTotal) statTotal.textContent = summary.total_executed || 0;
+        if (statPassed) statPassed.textContent = summary.passed || 0;
+        if (statFailed) statFailed.textContent = summary.failed || 0;
+        if (statRate) statRate.textContent = (summary.pass_rate || 0) + '%';
+        if (statTime) statTime.textContent = (summary.total_duration_ms || 0) + ' ms';
+
+        const tbody = document.getElementById('execution-results-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        (summary.results || []).forEach((res, idx) => {
+            const tr = document.createElement('tr');
+            const statusClass = res.status === 'PASSED' ? 'badge-success' : 'badge-danger';
+            const methodClass = res.method === 'GET' ? 'badge-info' : (res.method === 'POST' ? 'badge-primary' : 'badge-warning');
+
+            const passedAssertions = (res.assertions || []).filter(a => a.passed).length;
+            const totalAssertions = (res.assertions || []).length;
+
+            tr.innerHTML = `
+                <td><span class="badge ${statusClass}">${escapeHtml(res.status)}</span></td>
+                <td><span class="badge ${methodClass}">${escapeHtml(res.method || 'GET')}</span></td>
+                <td>
+                    <strong>${escapeHtml(res.name || 'API Case')}</strong><br>
+                    <small class="text-muted">${escapeHtml(res.url || '')}</small>
+                </td>
+                <td><code>${escapeHtml(String(res.status_code || '-'))}</code></td>
+                <td>${res.latency_ms ? escapeHtml(String(res.latency_ms)) + ' ms' : '-'}</td>
+                <td><span class="badge ${passedAssertions === totalAssertions ? 'badge-success' : 'badge-danger'}">${passedAssertions}/${totalAssertions}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info" type="button" data-toggle="collapse" data-target="#detail-${idx}">
+                        Details
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+
+            // Collapsible details row
+            const detailTr = document.createElement('tr');
+            detailTr.className = 'collapse';
+            detailTr.id = `detail-${idx}`;
+            
+            let assertionsHtml = '';
+            if (res.assertions && res.assertions.length > 0) {
+                assertionsHtml = `
+                    <h6>Assertions:</h6>
+                    <ul class="list-group mb-2">
+                        ${res.assertions.map(a => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                                <span><code>${escapeHtml(a.expression)}</code> ${escapeHtml(a.operator)} <code>${escapeHtml(JSON.stringify(a.expected))}</code></span>
+                                <span>
+                                    <span class="badge ${a.passed ? 'badge-success' : 'badge-danger'} mr-2">${a.passed ? 'PASS' : 'FAIL'}</span>
+                                    <small class="text-muted">Actual: <code>${escapeHtml(JSON.stringify(a.actual))}</code></small>
+                                </span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
+            }
+
+            const errorHtml = res.error ? `<div class="alert alert-danger py-1 mb-0"><small><strong>Error:</strong> ${escapeHtml(res.error)}</small></div>` : '';
+
+            detailTr.innerHTML = `
+                <td colspan="7" class="bg-light p-3">
+                    ${assertionsHtml}
+                    ${errorHtml}
+                </td>
+            `;
+            tbody.appendChild(detailTr);
+        });
+    }
+
+    if (exportPytestBtn) {
+        exportPytestBtn.addEventListener('click', async function() {
+            const baseUrlInput = document.getElementById('target-base-url');
+            const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : 'http://127.0.0.1:8000';
+
+            try {
+                const response = await fetch('/iface_case_generator/api/export-pytest/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        base_url: baseUrl,
+                        file_path: window.uploadedFilePath
+                    })
+                });
+
+                if (!response.ok) {
+                    let errMsg = response.statusText || `HTTP ${response.status}`;
+                    try {
+                        const err = await response.json();
+                        if (err && err.message) errMsg = err.message;
+                    } catch (_) {}
+                    alert('Pytest export failed: ' + errMsg);
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'test_api_generated.py';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Export Pytest error:', err);
+                alert('Export failed: ' + err.message);
+            }
+        });
+    }
+
+    if (exportPostmanBtn) {
+        exportPostmanBtn.addEventListener('click', async function() {
+            const baseUrlInput = document.getElementById('target-base-url');
+            const baseUrl = baseUrlInput ? baseUrlInput.value.trim() : 'http://127.0.0.1:8000';
+
+            try {
+                const response = await fetch('/iface_case_generator/api/export-postman/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    },
+                    body: JSON.stringify({
+                        base_url: baseUrl,
+                        file_path: window.uploadedFilePath
+                    })
+                });
+
+                if (!response.ok) {
+                    let errMsg = response.statusText || `HTTP ${response.status}`;
+                    try {
+                        const err = await response.json();
+                        if (err && err.message) errMsg = err.message;
+                    } catch (_) {}
+                    alert('Postman export failed: ' + errMsg);
+                    return;
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'codebrain_postman_collection.json';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Export Postman error:', err);
+                alert('Export failed: ' + err.message);
+            }
+        });
+    }
 });
+

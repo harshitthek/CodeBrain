@@ -335,6 +335,8 @@ def upload_single_file(request):
 def update_test_case_status(request):
     """Update test case review status and record comments if provided"""
     try:
+        from django.db import transaction
+
         data = json.loads(request.body)
         test_case_id = data.get('test_case_id')
         status = data.get('status')
@@ -343,20 +345,22 @@ def update_test_case_status(request):
         if not test_case_id or not status:
             return JsonResponse({'success': False, 'message': 'Missing test_case_id or status'}, status=400)
 
-        if status not in dict(TestCase.STATUS_CHOICES):
-            return JsonResponse({'success': False, 'message': f'Invalid status: {status}'}, status=400)
+        allowed_statuses = {choice[0] for choice in TestCase.STATUS_CHOICES}
+        if status not in allowed_statuses:
+            return JsonResponse({'success': False, 'message': f'Unsupported status: {status}'}, status=400)
 
         test_case = TestCase.objects.get(id=test_case_id)
-        test_case.status = status
-        test_case.save()
+        with transaction.atomic():
+            test_case.status = status
+            test_case.save()
 
-        if comments:
-            reviewer = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
-            TestCaseReview.objects.create(
-                test_case=test_case,
-                reviewer=reviewer,
-                review_comments=comments
-            )
+            if comments:
+                reviewer = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
+                TestCaseReview.objects.create(
+                    test_case=test_case,
+                    reviewer=reviewer,
+                    review_comments=comments
+                )
 
         return JsonResponse({'success': True, 'message': 'Status updated successfully'})
     except TestCase.DoesNotExist:
