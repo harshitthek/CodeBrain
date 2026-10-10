@@ -57,7 +57,10 @@ class APITestCaseGeneratorAgent:
                 try:
                     parsed = json.loads(json_value_str)
                     if isinstance(parsed, dict) and len(parsed) > 0:
-                        return True
+                        if list(parsed.keys()) == ['raw'] and not isinstance(parsed['raw'], (dict, list)):
+                            pass
+                        else:
+                            return True
                 except Exception:
                     pass
             props = (json_body.get('jsonSchema') or {}).get('properties') or {}
@@ -466,27 +469,141 @@ class APITestCaseGeneratorAgent:
         }
 
 
+def convert_endpoints_to_api_definitions(endpoints: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Convert parsed endpoints from OpenAPI or Postman into MeterSphere apiDefinitions schema."""
+    api_defs = []
+    for ep in endpoints:
+        q_params = [{"name": q.get('name', ''), "value": q.get('example', '')} for q in ep.get('query_params', [])]
+        r_params = [{"name": p.get('name', ''), "value": p.get('example', '')} for p in ep.get('path_params', [])]
+        h_params = [{"name": h.get('name', ''), "value": h.get('example', '')} for h in ep.get('headers', [])]
+
+        body_example = ep.get('request_body_example') or {}
+        has_body = bool(body_example) or bool(ep.get('request_body_schema'))
+        if isinstance(body_example, dict) and 'raw' in body_example and len(body_example) == 1:
+            body_type = "RAW"
+            json_val_str = str(body_example['raw'])
+        else:
+            body_type = "JSON" if has_body else "NONE"
+            json_val_str = json.dumps(body_example, ensure_ascii=False) if body_example else ""
+
+        api_defs.append({
+            "id": ep.get('id') or f"api_{uuid.uuid4().hex}",
+            "name": ep.get('name') or ep.get('summary') or ep.get('path', ''),
+            "method": ep.get('method', 'GET').upper(),
+            "path": ep.get('path', '/'),
+            "request": {
+                "query": q_params,
+                "rest": r_params,
+                "headers": h_params,
+                "body": {
+                    "bodyType": body_type,
+                    "jsonBody": {
+                        "jsonValue": json_val_str,
+                        "jsonSchema": ep.get('request_body_schema', {})
+                    },
+                    "bodyDataByType": {
+                        "jsonValue": json_val_str,
+                        "jsonSchema": ep.get('request_body_schema', {})
+                    }
+                },
+                "children": [{"assertionConfig": {"assertions": []}}]
+            },
+            "apiTestCaseList": []
+        })
+    return {"apiDefinitions": api_defs}
+
+
 def parse_api_definitions(file_path: str) -> List[Dict]:
-    """Parse API definition file and extract API list"""
+    """Parse API definition file (MeterSphere JSON, OpenAPI/Swagger JSON/YAML, or Postman Collection)."""
     try:
+        import shutil
         with open(file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        api_list = []
-        for api in data.get('apiDefinitions', []):
-            case_count = len(api.get('apiTestCaseList', []))
-            api_list.append({
-                'path': api.get('path', ''),
-                'name': api.get('name', ''),
-                'method': api.get('method', ''),
-                'has_test_cases': case_count > 0,
-                'test_case_count': case_count
-            })
-        
-        return api_list
-    except Exception as e:
-        logger.error(f"Failed to parse API definition file: {e}")
+            raw_content = f.read().strip()
+
+        # Try parsing JSON or YAML
+        try:
+            data = json.loads(raw_content)
+        except Exception:
+            data = yaml.safe_load(raw_content)
+
+        if not isinstance(data, dict):
+            logger.error(f"Root data in {file_path} is not a valid JSON/YAML object.")
+            return []
+
+        # 1. Native MeterSphere schema
+        if 'apiDefinitions' in data and isinstance(data['apiDefinitions'], list):
+            api_list = []
+            for api in data['apiDefinitions']:
+                case_count = len(api.get('apiTestCaseList', []))
+                api_list.append({
+                    'path': api.get('path', ''),
+                    'name': api.get('name', ''),
+                    'method': api.get('method', ''),
+                    'has_test_cases': case_count > 0,
+                    'test_case_count': case_count
+                })
+            return api_list
+
+        # 2. OpenAPI 3.x or Swagger 2.0
+        if 'openapi' in data or 'swagger' in data or ('paths' in data and isinstance(data.get('paths'), dict) and 'info' not in data and 'item' not in data):
+            logger.info(f"Detected OpenAPI/Swagger specification in {file_path}. Converting to apiDefinitions.")
+            # Preserve original source file as backup
+            backup_file = f"{file_path}.orig"
+            try:
+                shutil.copy2(file_path, backup_file)
+            except Exception as e:
+                logger.warning(f"Could not create backup of {file_path}: {e}")
+
+            from apps.knowledge.openapi_parser import OpenAPIParser
+            parser = OpenAPIParser(data)
+            endpoints = parser.parse_endpoints()
+            converted_data = convert_endpoints_to_api_definitions(endpoints)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(converted_data, f, ensure_ascii=False, indent=2)
+            return [
+                {
+                    'path': ep.get('path', ''),
+                    'name': ep.get('name', ''),
+                    'method': ep.get('method', ''),
+                    'has_test_cases': False,
+                    'test_case_count': 0
+                }
+                for ep in endpoints
+            ]
+
+        # 3. Postman Collection v2.x
+        if 'info' in data and ('item' in data or 'postman' in str(data.get('info', ''))):
+            logger.info(f"Detected Postman Collection in {file_path}. Converting to apiDefinitions.")
+            backup_file = f"{file_path}.orig"
+            try:
+                shutil.copy2(file_path, backup_file)
+            except Exception as e:
+                logger.warning(f"Could not create backup of {file_path}: {e}")
+
+            from apps.knowledge.postman_parser import PostmanParser
+            parser = PostmanParser(data)
+            endpoints = parser.parse_endpoints()
+            converted_data = convert_endpoints_to_api_definitions(endpoints)
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(converted_data, f, ensure_ascii=False, indent=2)
+            return [
+                {
+                    'path': ep.get('path', ''),
+                    'name': ep.get('name', ''),
+                    'method': ep.get('method', ''),
+                    'has_test_cases': False,
+                    'test_case_count': 0
+                }
+                for ep in endpoints
+            ]
+
+        logger.warning(f"Unrecognized API format in {file_path}.")
         return []
+
+    except Exception as e:
+        logger.error(f"Failed to parse API definition file {file_path}: {e}", exc_info=True)
+        return []
+
 
 
 def generate_test_cases_for_apis(file_path: str, selected_apis: list, count_per_api: int, 

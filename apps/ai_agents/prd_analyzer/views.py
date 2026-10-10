@@ -69,7 +69,7 @@ def prd_analyzer(request):
 
         # Check for raw text submission (direct paste)
         raw_text = request.POST.get('raw_text', '').strip()
-        if not raw_text and request.body:
+        if not raw_text and request.content_type == 'application/json':
             try:
                 body_data = json.loads(request.body)
                 raw_text = body_data.get('raw_text', '').strip()

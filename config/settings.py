@@ -199,12 +199,16 @@ AGENT_LLM_DEFAULTS = {
 }
 
 # Vector Database Configuration
+VECTOR_STORE_BACKEND = os.getenv('VECTOR_STORE_BACKEND', 'chroma')
+CHROMA_PERSIST_DIR = os.path.join(BASE_DIR, 'data', 'chroma_db')
+
 VECTOR_DB_CONFIG = {
-    'host': '172.16.50.57',
-    'port': '19530',
+    'host': os.getenv('MILVUS_HOST', '172.16.50.57'),
+    'port': os.getenv('MILVUS_PORT', '19530'),
     'db_name': 'qa_knowledge',
     'collection_name': 'vv_knowledge_collection',
 }
+
 
 # Java Source Code Analyzer Service URL
 JAVA_ANALYZER_SERVICE_URL = "http://java-analyzer:80"

@@ -3,6 +3,8 @@ import json
 import time
 import asyncio
 from typing import List, Dict, Any, Optional
+import ipaddress
+import socket
 from urllib.parse import urlparse
 import httpx
 from jsonpath_ng.ext import parse as parse_jsonpath
@@ -11,9 +13,11 @@ from jsonpath_ng.ext import parse as parse_jsonpath
 class APITestRunner:
     """Asynchronous HTTP test execution engine evaluating status codes and JSONPath assertions."""
 
-    def __init__(self, base_url: str, timeout: float = 10.0, max_concurrency: int = 5):
+    def __init__(self, base_url: str, timeout: float = 10.0, max_concurrency: int = 5, verify: bool = True):
         self.base_url = base_url.strip().rstrip('/')
         self.timeout = timeout
+        self.max_concurrency = max_concurrency
+        self.verify = verify
         self.semaphore = asyncio.Semaphore(max_concurrency)
 
     def _is_safe_target_url(self, url: str) -> bool:
@@ -26,9 +30,41 @@ class APITestRunner:
             parsed = urlparse(url)
             if parsed.scheme not in ('http', 'https'):
                 return False
-            hostname = (parsed.hostname or '').lower()
-            if hostname == '169.254.169.254':
+            hostname = (parsed.hostname or '').lower().strip('[]')
+            if not hostname:
                 return False
+
+            if hostname in ('169.254.169.254', 'metadata.google.internal', 'metadata.goog', 'fd00:ec2::254'):
+                return False
+
+            # Check IP representation (including decimal and hex)
+            try:
+                try:
+                    ip = ipaddress.ip_address(int(hostname, 0))
+                except (ValueError, TypeError):
+                    ip = ipaddress.ip_address(hostname)
+
+                if ip == ipaddress.ip_address('fd00:ec2::254'):
+                    return False
+                if ip.is_link_local:
+                    return False
+                if isinstance(ip, ipaddress.IPv4Address) and ip in ipaddress.IPv4Network('169.254.0.0/16'):
+                    return False
+                if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped and ip.ipv4_mapped in ipaddress.IPv4Network('169.254.0.0/16'):
+                    return False
+            except ValueError:
+                # Hostname is a domain name: resolve DNS
+                try:
+                    addr_info = socket.getaddrinfo(hostname, None)
+                    for _, _, _, _, sockaddr in addr_info:
+                        resolved_ip = ipaddress.ip_address(sockaddr[0])
+                        if resolved_ip == ipaddress.ip_address('fd00:ec2::254') or resolved_ip.is_link_local:
+                            return False
+                        if isinstance(resolved_ip, ipaddress.IPv4Address) and resolved_ip in ipaddress.IPv4Network('169.254.0.0/16'):
+                            return False
+                except (socket.gaierror, ValueError):
+                    pass
+
             return True
         except Exception:
             return False
@@ -164,9 +200,9 @@ class APITestRunner:
         for item in assertions:
             expr_str = item.get('expression', 'code')
             cond = (item.get('condition') or condition_hint or 'EQUALS').upper()
-            expected = item.get('expectedValue', item.get('expected', '10000'))
+            expected = item.get('expectedValue', item.get('expected'))
 
-            if expr_str in ('code', 'status', 'status_code') and (parsed_json is None or expr_str not in parsed_json):
+            if expr_str in ('code', 'status', 'status_code') and not (isinstance(parsed_json, dict) and expr_str in parsed_json):
                 actual_val = response.status_code
             else:
                 actual_val = self._extract_jsonpath(parsed_json, expr_str) if parsed_json is not None else None
@@ -207,9 +243,16 @@ class APITestRunner:
                         query_params[name] = val
 
             # Extract body
-            body_json = case.get('request_body_json') or req_info.get('body') or case.get('body')
-            if not isinstance(body_json, dict):
-                body_json = None
+            body_payload = case.get('request_body_json') or req_info.get('body') or case.get('body')
+            body_json = None
+            body_content = None
+            if isinstance(body_payload, (dict, list)):
+                body_json = body_payload
+            elif isinstance(body_payload, str) and body_payload.strip():
+                try:
+                    body_json = json.loads(body_payload)
+                except Exception:
+                    body_content = body_payload.encode('utf-8')
 
             # Extract assertions
             assertions = []
@@ -220,7 +263,22 @@ class APITestRunner:
             elif 'jsonPathAssertion' in case:
                 assertions = case['jsonPathAssertion'].get('assertions', [])
 
-            condition_hint = case.get('assertion_condition', 'EQUALS')
+            if not assertions and 'children' in req_info:
+                for child in req_info.get('children', []):
+                    if isinstance(child, dict):
+                        cfg = child.get('assertionConfig', {})
+                        for a in cfg.get('assertions', []):
+                            jpa = a.get('jsonPathAssertion', {})
+                            if jpa.get('assertions'):
+                                assertions.extend(jpa['assertions'])
+                            elif 'expression' in a:
+                                assertions.append(a)
+
+            condition_hint = case.get('assertion_condition')
+            if not condition_hint and assertions and assertions[0].get('condition'):
+                condition_hint = assertions[0].get('condition')
+            if not condition_hint:
+                condition_hint = 'EQUALS'
 
             if not self._is_safe_target_url(full_url):
                 return {
@@ -246,7 +304,7 @@ class APITestRunner:
                 if isinstance(h, dict) and h.get('name') and h.get('value'):
                     headers[h['name']] = str(h['value'])
 
-            if body_json and "Content-Type" not in headers:
+            if (body_json is not None or body_content is not None) and "Content-Type" not in headers:
                 headers["Content-Type"] = "application/json"
 
             start_time = time.perf_counter()
@@ -256,6 +314,7 @@ class APITestRunner:
                     url=full_url,
                     params=query_params if query_params else None,
                     json=body_json,
+                    content=body_content,
                     headers=headers,
                     timeout=self.timeout
                 )
@@ -294,7 +353,7 @@ class APITestRunner:
 
     async def execute_suite(self, test_cases: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Execute a full test suite asynchronously and return execution summary."""
-        async with httpx.AsyncClient(verify=False) as client:
+        async with httpx.AsyncClient(verify=self.verify) as client:
             tasks = [self.execute_case(client, case) for case in test_cases]
             results = await asyncio.gather(*tasks)
 

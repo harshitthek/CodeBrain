@@ -24,7 +24,8 @@ class GeneratedTestCaseItem(BaseModel):
     @classmethod
     def validate_test_steps(cls, v: Any) -> List[str]:
         if isinstance(v, list):
-            return [str(step).strip() for step in v if str(step).strip()]
+            cleaned = [str(step).strip() for step in v if str(step).strip()]
+            return cleaned if cleaned else ["Perform verification action"]
         if isinstance(v, str) and v.strip():
             lines = [line.strip() for line in v.split("\n") if line.strip()]
             return lines if lines else ["Perform verification action"]
@@ -34,7 +35,8 @@ class GeneratedTestCaseItem(BaseModel):
     @classmethod
     def validate_expected_results(cls, v: Any) -> List[str]:
         if isinstance(v, list):
-            return [str(item).strip() for item in v if str(item).strip()]
+            cleaned = [str(item).strip() for item in v if str(item).strip()]
+            return cleaned if cleaned else ["Action executes successfully as expected"]
         if isinstance(v, str) and v.strip():
             lines = [line.strip() for line in v.split("\n") if line.strip()]
             return lines if lines else ["Action executes successfully as expected"]

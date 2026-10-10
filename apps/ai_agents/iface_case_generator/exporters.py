@@ -38,28 +38,37 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
                 if k:
                     query_params[k] = v
 
+        # Substitute path parameters if provided
+        for rp in (case.get('request_rest') or req_info.get('rest') or []):
+            if isinstance(rp, dict):
+                rk = rp.get('param_name') or rp.get('name') or rp.get('key')
+                rv = rp.get('param_value') if rp.get('param_value') is not None else rp.get('value')
+                if rk and rv is not None:
+                    path = path.replace('{' + str(rk) + '}', str(rv)).replace(':' + str(rk), str(rv))
+
         headers_dict = {"User-Agent": "CodeBrain-Pytest/2.0"}
         raw_headers = case.get('headers') or req_info.get('headers', [])
         for h in raw_headers:
             if isinstance(h, dict) and h.get('name') and h.get('value'):
                 headers_dict[h['name']] = str(h['value'])
 
+        desc = case.get("description", case.get("name", "Test Case"))
         code_lines.append(f"def {fn_name}():")
-        code_lines.append(f'    """{case.get("description", case.get("name", "Test Case"))}"""')
-        code_lines.append(f'    url = f"{{BASE_URL}}{path}"')
-        code_lines.append(f'    headers = {json.dumps(headers_dict, ensure_ascii=False)}')
+        code_lines.append(f'    {repr(str(desc))}')
+        code_lines.append(f'    url = BASE_URL + {path!r}')
+        code_lines.append(f'    headers = {headers_dict!r}')
         if query_params:
-            code_lines.append(f'    params = {json.dumps(query_params, ensure_ascii=False)}')
+            code_lines.append(f'    params = {query_params!r}')
         else:
             code_lines.append('    params = None')
 
-        if body:
-            code_lines.append(f'    json_body = {json.dumps(body, ensure_ascii=False, indent=8).strip()}')
+        if body is not None:
+            code_lines.append(f'    json_body = {body!r}')
         else:
             code_lines.append('    json_body = None')
 
         code_lines.append(f'    with httpx.Client(timeout=10.0) as client:')
-        code_lines.append(f'        response = client.request("{method}", url, params=params, json=json_body, headers=headers)')
+        code_lines.append(f'        response = client.request({method!r}, url, params=params, json=json_body, headers=headers)')
 
         # Assertions
         assertions = case.get('assertions') or []

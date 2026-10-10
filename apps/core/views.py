@@ -343,6 +343,9 @@ def update_test_case_status(request):
         if not test_case_id or not status:
             return JsonResponse({'success': False, 'message': 'Missing test_case_id or status'}, status=400)
 
+        if status not in dict(TestCase.STATUS_CHOICES):
+            return JsonResponse({'success': False, 'message': f'Invalid status: {status}'}, status=400)
+
         test_case = TestCase.objects.get(id=test_case_id)
         test_case.status = status
         test_case.save()

@@ -161,7 +161,7 @@ def get_test_cases(request, test_case_ids: str):
         ids = test_case_ids.split(',')
         test_cases = TestCase.objects.filter(id__in=ids).values(
             'id', 'title', 'description', 'test_steps', 
-            'expected_results', 'status', 'requirements', 'llm_provider'
+            'expected_results', 'status', 'requirements', 'llm_provider', 'priority'
         )
         return JsonResponse({
             'success': True,
@@ -234,11 +234,20 @@ def export_test_cases_excel(request):
                 for tc in test_cases_qs
             ]
         else:
-            response = get_test_cases(request, ids)
-            response_data = json.loads(response.content)
-            if not response_data.get('success'):
-                return JsonResponse({'success': False, 'message': 'Failed to retrieve test case data'})
-            test_cases = response_data.get('test_cases', [])
+            id_list = [i for i in ids.split(',') if i.strip()]
+            test_cases_qs = TestCase.objects.filter(id__in=id_list)
+            test_cases = [
+                {
+                    'id': tc.id,
+                    'title': tc.title,
+                    'description': tc.description,
+                    'test_steps': tc.test_steps,
+                    'expected_results': tc.expected_results,
+                    'status': tc.status,
+                    'priority': tc.priority or 'P2'
+                }
+                for tc in test_cases_qs
+            ]
 
         if not test_cases:
             return JsonResponse({'success': False, 'message': 'No test cases to export'})
