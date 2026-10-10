@@ -1,13 +1,23 @@
 import Lenis from 'lenis';
 
 export let lenisInstance: Lenis | null = null;
+let rafId: number | null = null;
+
+export const destroySmoothScroll = (): void => {
+  if (rafId !== null && typeof window !== 'undefined') {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+  if (lenisInstance) {
+    lenisInstance.destroy();
+    lenisInstance = null;
+  }
+};
 
 export const initSmoothScroll = (): Lenis | null => {
   if (typeof window === 'undefined') return null;
 
-  if (lenisInstance) {
-    lenisInstance.destroy();
-  }
+  destroySmoothScroll();
 
   lenisInstance = new Lenis({
     duration: 1.15,
@@ -20,11 +30,12 @@ export const initSmoothScroll = (): Lenis | null => {
   });
 
   function raf(time: number) {
-    lenisInstance?.raf(time);
-    requestAnimationFrame(raf);
+    if (!lenisInstance) return;
+    lenisInstance.raf(time);
+    rafId = requestAnimationFrame(raf);
   }
 
-  requestAnimationFrame(raf);
+  rafId = requestAnimationFrame(raf);
   return lenisInstance;
 };
 
@@ -39,3 +50,4 @@ export const scrollToElement = (id: string, offset: number = -90) => {
     window.scrollTo({ top, behavior: 'smooth' });
   }
 };
+

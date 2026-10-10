@@ -7,14 +7,14 @@ import { APIRunnerSection } from './components/APIRunnerSection';
 import { ArchitectureSection } from './components/ArchitectureSection';
 import { HybridRAGSection } from './components/HybridRAGSection';
 import { Footer } from './components/Footer';
-import { initSmoothScroll, scrollToElement } from './utils/smoothScroll';
+import { initSmoothScroll, destroySmoothScroll, scrollToElement } from './utils/smoothScroll';
 
 export const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState('pipeline');
 
   useEffect(() => {
     // Initialize darkroomengineering/lenis smooth scroll physics
-    const lenis = initSmoothScroll();
+    initSmoothScroll();
 
     const handleScroll = () => {
       const sections = ['pipeline', 'agents', 'apirunner', 'architecture', 'rag'];
@@ -36,7 +36,7 @@ export const App: React.FC = () => {
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      lenis?.destroy();
+      destroySmoothScroll();
     };
   }, []);
 

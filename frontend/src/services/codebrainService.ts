@@ -10,9 +10,20 @@ import {
 
 const LOCAL_STORAGE_BACKEND_KEY = 'codebrain_backend_url';
 
+function readStoredBackendUrl(): string {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(LOCAL_STORAGE_BACKEND_KEY) || '';
+    }
+  } catch {
+    // Ignore storage access errors in restricted contexts
+  }
+  return '';
+}
+
 export class CodeBrainService {
   private static backendUrl: string =
-    localStorage.getItem(LOCAL_STORAGE_BACKEND_KEY) ||
+    readStoredBackendUrl() ||
     import.meta.env.VITE_API_BASE_URL ||
     '';
 
@@ -22,7 +33,13 @@ export class CodeBrainService {
 
   public static setBackendUrl(url: string): void {
     this.backendUrl = url.trim().replace(/\/+$/, '');
-    localStorage.setItem(LOCAL_STORAGE_BACKEND_KEY, this.backendUrl);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(LOCAL_STORAGE_BACKEND_KEY, this.backendUrl);
+      }
+    } catch {
+      // Ignore storage write errors
+    }
   }
 
   public static isLiveBackendConfigured(): boolean {
@@ -132,67 +149,198 @@ export class CodeBrainService {
     };
   }
 
-  /**
-   * Deterministic Actor-Critic simulation directly mirroring `apps/ai_agents/common/orchestrator.py`
-   */
-  private static async simulateActorCriticEngine(
+  private static getSimulatedCasesForSpec(
     requirements: string,
-    minScore: number,
-    maxIterations: number,
-    actorModel: string,
-    onProgress?: (log: string, percent: number) => void
-  ): Promise<ReflectionPipelineResult> {
-    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    actorModel: string
+  ): { initial: TestCaseItem[]; refined: TestCaseItem[] } {
+    const lower = requirements.toLowerCase();
 
-    const boundedMax = Math.min(Math.max(maxIterations, 1), 2);
-    const logs: string[] = [];
+    if (lower.includes('oauth') || lower.includes('pkce')) {
+      const initial: TestCaseItem[] = [
+        {
+          id: 'TC-101',
+          title: 'Verify OAuth2 PKCE S256 authorization code exchange for access & refresh pair',
+          description: 'Ensure valid code_verifier matching S256 code_challenge yields 60m access and 30d refresh tokens.',
+          test_steps: [
+            'Initiate /authorize with S256 code_challenge',
+            'Submit POST /oauth/token with matching code_verifier',
+            'Inspect JWT claims and TTL metadata',
+          ],
+          expected_results: [
+            'HTTP 200 with access_token (TTL 3600s) and refresh_token (TTL 30d)',
+            'Authorization code marked single-use and invalidated',
+          ],
+          status: 'pending',
+          priority: 'p0',
+          feature: 'OAuth2 PKCE',
+          llm_provider: actorModel,
+        },
+        {
+          id: 'TC-102',
+          title: 'Verify atomic refresh token rotation invalidates prior refresh token',
+          description: 'Every refresh grant must rotate token pair and revoke previous token.',
+          test_steps: [
+            'Exchange valid refresh_token_v1 at POST /oauth/token',
+            'Verify new token pair (access_v2, refresh_v2) is issued',
+          ],
+          expected_results: [
+            'HTTP 200 with rotated token pair',
+            'refresh_token_v1 marked consumed in token store',
+          ],
+          status: 'pending',
+          priority: 'p0',
+          feature: 'Token Rotation',
+          llm_provider: actorModel,
+        },
+        {
+          id: 'TC-103',
+          title: 'Boundary test: JWT validation at 300-second clock skew boundary',
+          description: 'Verify token acceptance at +300s skew and rejection at +301s skew.',
+          test_steps: [
+            'Present JWT with exp timestamp skewed by +300s and +301s',
+          ],
+          expected_results: [
+            '+300s accepted; +301s rejected with HTTP 401 ERR_TOKEN_EXPIRED',
+          ],
+          status: 'pending',
+          priority: 'p1',
+          feature: 'Clock Skew',
+          llm_provider: actorModel,
+        },
+      ];
 
-    const emit = (msg: string, pct: number) => {
-      logs.push(msg);
-      if (onProgress) onProgress(msg, pct);
-    };
+      const refined: TestCaseItem[] = [
+        ...initial,
+        {
+          id: 'TC-104',
+          title: 'Security test: Replay of invalidated refresh token revokes entire token lineage',
+          description: 'Presenting a previously rotated refresh token must trigger immediate family revocation.',
+          test_steps: [
+            'Replay consumed refresh_token_v1 after refresh_token_v2 was issued',
+            'Attempt authenticated API call using active access_v2 or refresh_v2',
+          ],
+          expected_results: [
+            'HTTP 401 Invalid Grant with SECURITY_TOKEN_REPLAY alert',
+            'Entire token family lineage immediately revoked in Redis store',
+          ],
+          status: 'approved',
+          priority: 'p0',
+          feature: 'Replay Mitigation',
+          llm_provider: actorModel,
+        },
+        {
+          id: 'TC-105',
+          title: 'Exception test: PKCE downgrade & mismatched code_verifier rejection',
+          description: 'Ensure plain challenge downgrade or tampered verifier is rejected.',
+          test_steps: [
+            'Submit POST /oauth/token with mismatched SHA-256 code_verifier',
+          ],
+          expected_results: [
+            'HTTP 400 invalid_grant with zero token issuance',
+          ],
+          status: 'approved',
+          priority: 'p1',
+          feature: 'PKCE Enforcement',
+          llm_provider: actorModel,
+        },
+      ];
 
-    emit(`[00:00] Initializing ActorCriticReflectionEngine with ${actorModel.toUpperCase()} (Actor) & Critic...`, 15);
-    await sleep(400);
+      return { initial, refined };
+    }
 
-    emit(`[00:01] Parsing requirements into Pydantic v2 GeneratedTestCaseItem domain schemas...`, 30);
-    await sleep(500);
+    if (lower.includes('raft') || lower.includes('quorum')) {
+      const initial: TestCaseItem[] = [
+        {
+          id: 'TC-101',
+          title: 'Verify follower transitions to Candidate and increments term on election timeout',
+          description: 'Follower without heartbeat within 150-300ms timeout starts new election term.',
+          test_steps: [
+            'Suppress leader AppendEntries RPC for >300ms on 5-node cluster',
+            'Observe follower term counter and RequestVote broadcast',
+          ],
+          expected_results: [
+            'Follower increments currentTerm and transitions to Candidate state',
+            'RequestVote RPC dispatched to all 4 peer nodes',
+          ],
+          status: 'pending',
+          priority: 'p0',
+          feature: 'Leader Election',
+          llm_provider: actorModel,
+        },
+        {
+          id: 'TC-102',
+          title: 'Verify strict majority quorum (N/2 + 1) elects new leader',
+          description: 'Candidate acquiring 3 of 5 votes transitions to Leader and asserts authority.',
+          test_steps: [
+            'Return VoteGranted=true from 2 peers (plus self vote = 3/5)',
+            'Verify immediate heartbeat AppendEntries broadcast',
+          ],
+          expected_results: [
+            'Candidate transitions to Leader within 1 RTT',
+            'Peers reset election timers and acknowledge new term',
+          ],
+          status: 'pending',
+          priority: 'p0',
+          feature: 'Quorum Consensus',
+          llm_provider: actorModel,
+        },
+        {
+          id: 'TC-103',
+          title: 'Boundary test: Heartbeat jitter bounds (150ms min / 300ms max)',
+          description: 'Verify randomized jitter prevents synchronized candidate wakeups.',
+          test_steps: [
+            'Sample 1,000 election timeout intervals across cluster nodes',
+          ],
+          expected_results: [
+            'All intervals fall within [150ms, 300ms] with uniform variance',
+          ],
+          status: 'pending',
+          priority: 'p1',
+          feature: 'Timing Bounds',
+          llm_provider: actorModel,
+        },
+      ];
 
-    // Iteration 1 (Actor generates initial suite)
-    emit(`[00:02] Iteration 1: Actor synthesized 4 candidate test cases across Equivalence & Boundary partitions.`, 45);
-    await sleep(600);
+      const refined: TestCaseItem[] = [
+        ...initial,
+        {
+          id: 'TC-104',
+          title: 'Fault tolerance: Split-vote recovery via randomized backoff jitter',
+          description: 'Simultaneous candidates splitting votes must re-elect cleanly in next term.',
+          test_steps: [
+            'Partition 4-node cluster into two 2-vote ties during term T',
+            'Await election timeout with randomized backoff',
+          ],
+          expected_results: [
+            'Higher-jitter node wins term T+1 majority without livelock',
+          ],
+          status: 'approved',
+          priority: 'p0',
+          feature: 'Split-Vote Recovery',
+          llm_provider: actorModel,
+        },
+        {
+          id: 'TC-105',
+          title: 'Resilience test: Minority network partition rejects stale leader writes',
+          description: 'Isolated leader in 2-of-5 partition must reject client mutations.',
+          test_steps: [
+            'Isolate current leader with only 1 follower (2/5 minority)',
+            'Submit client write operation to isolated leader',
+          ],
+          expected_results: [
+            'Write rejected with ERR_QUORUM_UNREACHABLE; zero uncommitted log commit',
+          ],
+          status: 'approved',
+          priority: 'p0',
+          feature: 'Partition Safety',
+          llm_provider: actorModel,
+        },
+      ];
 
-    emit(`[00:03] Critic auditing Iteration 1 against Completeness, Coverage, Redundancy, Feasibility rubric...`, 60);
-    await sleep(600);
+      return { initial, refined };
+    }
 
-    const initialScore = 78.5;
-    const iteration1Rubric: ReviewRubric = {
-      score: initialScore,
-      completeness: 82,
-      coverage: 70,
-      redundancy: 88,
-      feasibility: 85,
-      strengths: [
-        'Structured positive-path steps with clear preconditions',
-        'Valid HTTP status assertions and standard response fields',
-      ],
-      weaknesses: [
-        'Overlooked exponential retry storm on downstream payment gateway timeout',
-        'Boundary assertions missing for max payload size limits (>10MB)',
-      ],
-      suggestions: [
-        'Incorporate explicit 504 Gateway Timeout simulation',
-        'Add input validation tests for malformed JSON and null ID parameters',
-      ],
-      missing_scenarios: [
-        'Downstream service degradation with circuit-breaker trip',
-        'Malformed signature header on incoming webhook payload',
-      ],
-      recommendation: initialScore >= minScore ? 'Pass' : 'Refine',
-      comments: `Initial score ${initialScore}% is below required ${minScore}%. Triggering targeted refinement pass.`,
-    };
-
-    const iteration1Cases: TestCaseItem[] = [
+    const initial: TestCaseItem[] = [
       {
         id: 'TC-101',
         title: 'Verify standard successful checkout workflow with authorized token',
@@ -247,12 +395,120 @@ export class CodeBrainService {
       },
     ];
 
+    const refined: TestCaseItem[] = [
+      ...initial,
+      {
+        id: 'TC-104',
+        title: 'Exception test: Webhook signature tampering & invalid HMAC',
+        description: 'Ensure forged or expired X-Signature header is rejected with 401 Unauthorized.',
+        test_steps: [
+          'Post simulated webhook with tampered body payload differing from signed digest',
+          'Assert HMAC-SHA256 signature mismatch',
+          'Verify audit log records SECURITY_SIGNATURE_MISMATCH event',
+        ],
+        expected_results: [
+          'HTTP 401 Unauthorized with error message "Invalid signature digest"',
+          'Zero order state modification or fulfillment actions triggered',
+        ],
+        status: 'approved',
+        priority: 'p0',
+        feature: 'Security & Auth',
+        llm_provider: actorModel,
+      },
+      {
+        id: 'TC-105',
+        title: 'Resilience test: Downstream payment gateway 504 timeout & circuit breaker',
+        description: 'Verify system executes circuit-breaker fallback when Stripe API response exceeds 5000ms.',
+        test_steps: [
+          'Simulate 6000ms latency on external payment gateway mock',
+          'Submit customer checkout request',
+          'Verify fallback queued to delayed retry topic with exponential backoff jitter',
+        ],
+        expected_results: [
+          'HTTP 503 with user-friendly retry-after header',
+          'Circuit breaker transitions from CLOSED to OPEN after 3 consecutive timeouts',
+        ],
+        status: 'approved',
+        priority: 'p1',
+        feature: 'Fault Tolerance',
+        llm_provider: actorModel,
+      },
+    ];
+
+    return { initial, refined };
+  }
+
+  /**
+   * Deterministic Actor-Critic simulation directly mirroring `apps/ai_agents/common/orchestrator.py`
+   */
+  private static async simulateActorCriticEngine(
+    requirements: string,
+    minScore: number,
+    maxIterations: number,
+    actorModel: string,
+    onProgress?: (log: string, percent: number) => void
+  ): Promise<ReflectionPipelineResult> {
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const boundedMax = Math.min(Math.max(maxIterations, 1), 2);
+    const logs: string[] = [];
+
+    const emit = (msg: string, pct: number) => {
+      logs.push(msg);
+      if (onProgress) onProgress(msg, pct);
+    };
+
+    emit(`[00:00] Initializing ActorCriticReflectionEngine with ${actorModel.toUpperCase()} (Actor) & Critic...`, 15);
+    await sleep(400);
+
+    emit(`[00:01] Parsing requirements into Pydantic v2 GeneratedTestCaseItem domain schemas...`, 30);
+    await sleep(500);
+
+    const { initial: iteration1Cases, refined: iteration2Cases } = this.getSimulatedCasesForSpec(
+      requirements,
+      actorModel
+    );
+
+    // Iteration 1 (Actor generates initial suite)
+    emit(`[00:02] Iteration 1: Actor synthesized ${iteration1Cases.length} candidate test cases across Equivalence & Boundary partitions.`, 45);
+    await sleep(600);
+
+    emit(`[00:03] Critic auditing Iteration 1 against Completeness, Coverage, Redundancy, Feasibility rubric...`, 60);
+    await sleep(600);
+
+    const initialScore = 78.5;
+    const iteration1Rubric: ReviewRubric = {
+      score: initialScore,
+      completeness: 82,
+      coverage: 70,
+      redundancy: 88,
+      feasibility: 85,
+      strengths: [
+        'Structured positive-path steps with clear preconditions',
+        'Valid HTTP status assertions and standard response fields',
+      ],
+      weaknesses: [
+        'Missing negative security and fault-injection scenarios',
+        'Boundary assertions needed for failure recovery and replay paths',
+      ],
+      suggestions: [
+        'Incorporate explicit timeout/partition simulation',
+        'Add cryptographic/security tampering assertions',
+      ],
+      missing_scenarios: [
+        'Fault-injection degradation path',
+        'Adversarial replay or spoofing vector',
+      ],
+      recommendation: initialScore >= minScore ? 'Pass' : 'Refine',
+      comments: `Initial score ${initialScore}% is below required ${minScore}%. Triggering targeted refinement pass.`,
+    };
+
     const iterations: ReflectionIteration[] = [
       {
         iteration: 1,
         actor_model: actorModel,
         critic_model: 'critic-lead',
-        cases_generated: 3,
+        cases_generated: iteration1Cases.length,
         rubric: iteration1Rubric,
         safeguard_triggered: false,
         timestamp: new Date().toISOString(),
@@ -263,16 +519,16 @@ export class CodeBrainService {
       },
     ];
 
-    let bestCases = iteration1Cases;
+    let bestCases = iteration1Cases.map((c) => ({ ...c, status: 'approved' as const }));
     let highestScore = initialScore;
     let converged = initialScore >= minScore;
 
     // Iteration 2 (Refinement pass with feedback)
     if (!converged && boundedMax >= 2) {
-      emit(`[00:04] Iteration 2: Constructing refinement prompt with Critic itemized feedback & weak dimensions...`, 75);
+      emit(`[00:04] [PASS 2] Iteration 2: Constructing refinement prompt with Critic itemized feedback & weak dimensions...`, 75);
       await sleep(650);
 
-      emit(`[00:05] Actor generated refined suite addressing missing timeout paths and signature spoofing.`, 85);
+      emit(`[00:05] [PASS 2] Actor generated refined suite (${iteration2Cases.length} cases) addressing security & fault-tolerance gaps.`, 85);
       await sleep(550);
 
       const refinedScore = 93.5;
@@ -284,8 +540,8 @@ export class CodeBrainService {
         feasibility: 96,
         strengths: [
           'Exceptional boundary and negative exception coverage',
-          'Detailed idempotency and HMAC cryptographic verification steps',
-          'Explicit circuit-breaker trip assertions under downstream 504 timeouts',
+          'Detailed security and cryptographic verification steps',
+          'Explicit fault-tolerance assertions under degraded conditions',
         ],
         weaknesses: [],
         suggestions: ['Ready for direct export to Jira and TestRail'],
@@ -294,58 +550,18 @@ export class CodeBrainService {
         comments: `Refinement achieved ${refinedScore}% score. Monotonic regression safeguard verified monotonic quality increase (+${(refinedScore - initialScore).toFixed(1)}%).`,
       };
 
-      const iteration2Cases: TestCaseItem[] = [
-        ...iteration1Cases,
-        {
-          id: 'TC-104',
-          title: 'Exception test: Webhook signature tampering & invalid HMAC',
-          description: 'Ensure forged or expired X-Signature header is rejected with 401 Unauthorized.',
-          test_steps: [
-            'Post simulated webhook with tampered body payload differing from signed digest',
-            'Assert HMAC-SHA256 signature mismatch',
-            'Verify audit log records SECURITY_SIGNATURE_MISMATCH event',
-          ],
-          expected_results: [
-            'HTTP 401 Unauthorized with error message "Invalid signature digest"',
-            'Zero order state modification or fulfillment actions triggered',
-          ],
-          status: 'approved',
-          priority: 'p0',
-          feature: 'Security & Auth',
-          llm_provider: actorModel,
-        },
-        {
-          id: 'TC-105',
-          title: 'Resilience test: Downstream payment gateway 504 timeout & circuit breaker',
-          description: 'Verify system executes circuit-breaker fallback when Stripe API response exceeds 5000ms.',
-          test_steps: [
-            'Simulate 6000ms latency on external payment gateway mock',
-            'Submit customer checkout request',
-            'Verify fallback queued to delayed retry topic with exponential backoff jitter',
-          ],
-          expected_results: [
-            'HTTP 503 with user-friendly retry-after header',
-            'Circuit breaker transitions from CLOSED to OPEN after 3 consecutive timeouts',
-          ],
-          status: 'approved',
-          priority: 'p1',
-          feature: 'Fault Tolerance',
-          llm_provider: actorModel,
-        },
-      ];
-
       // Mark all as approved
-      bestCases = iteration2Cases.map((c) => ({ ...c, status: 'approved' }));
+      bestCases = iteration2Cases.map((c) => ({ ...c, status: 'approved' as const }));
       highestScore = refinedScore;
-      converged = true;
+      converged = refinedScore >= minScore;
 
-      emit(`[00:06] Monotonic Regression Safeguard: Suite score improved from ${initialScore}% to ${refinedScore}%. Best suite preserved.`, 95);
+      emit(`[00:06] [CONVERGED] Monotonic Regression Safeguard: Suite score improved from ${initialScore}% to ${refinedScore}%. Best suite preserved.`, 95);
 
       iterations.push({
         iteration: 2,
         actor_model: actorModel,
         critic_model: 'critic-lead',
-        cases_generated: 5,
+        cases_generated: iteration2Cases.length,
         rubric: iteration2Rubric,
         safeguard_triggered: false,
         timestamp: new Date().toISOString(),
@@ -357,7 +573,7 @@ export class CodeBrainService {
       });
     }
 
-    emit(`[00:07] Autonomous reflection completed. 5 verified test cases converged.`, 100);
+    emit(`[00:07] [CONVERGED] Autonomous reflection completed. ${bestCases.length} verified test cases converged.`, 100);
 
     return {
       success: true,
@@ -505,8 +721,20 @@ export class CodeBrainService {
     await sleep(380);
 
     // Simulate strict SSRF guard validation
-    const isLocalOrMetadata = baseUrl.includes('169.254') || baseUrl.includes('metadata.google');
+    const isLocalOrMetadata =
+      baseUrl.includes('169.254') ||
+      baseUrl.includes('metadata.google') ||
+      baseUrl.includes('127.0.0.1') ||
+      baseUrl.includes('localhost') ||
+      endpoint.id === 'ep-metadata' ||
+      endpoint.path.includes('meta-data');
     if (isLocalOrMetadata) {
+      const assertionsResults = endpoint.assertions.map((a) => ({
+        expression: a.expression,
+        passed: a.expected === 403,
+        actual: 403,
+        expected: a.expected,
+      }));
       return {
         endpoint_id: endpoint.id,
         method: endpoint.method,
@@ -514,10 +742,10 @@ export class CodeBrainService {
         status_code: 403,
         latency_ms: 12,
         tls_verified: false,
-        ip_pinned: 'BLOCKED',
-        passed: false,
-        assertions_results: [],
-        error_message: 'SSRF Violation: Target IP falls within restricted cloud metadata range.',
+        ip_pinned: 'BLOCKED (169.254.169.254)',
+        passed: assertionsResults.every((r) => r.passed),
+        assertions_results: assertionsResults,
+        error_message: 'SSRF Guard: Target falls within restricted cloud metadata or loopback range.',
       };
     }
 

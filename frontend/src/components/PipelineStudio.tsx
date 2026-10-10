@@ -300,24 +300,29 @@ export const PipelineStudio: React.FC = () => {
                     </div>
 
                     {/* Rubric Dimension Breakdown */}
-                    <div className="space-y-1.5 text-[11px] font-mono border-t sm:border-t-0 sm:border-l border-white/[0.06] pt-3 sm:pt-0 sm:pl-4">
-                      <div className="flex justify-between text-[#8e8e98]">
-                        <span>Completeness</span>
-                        <span className="text-white">{result ? '94%' : '--'}</span>
-                      </div>
-                      <div className="flex justify-between text-[#8e8e98]">
-                        <span>Boundary Coverage</span>
-                        <span className="text-white">{result ? '91%' : '--'}</span>
-                      </div>
-                      <div className="flex justify-between text-[#8e8e98]">
-                        <span>Step Feasibility</span>
-                        <span className="text-white">{result ? '96%' : '--'}</span>
-                      </div>
-                      <div className="flex justify-between text-[#8e8e98]">
-                        <span>Zero Redundancy</span>
-                        <span className="text-white">{result ? '89%' : '--'}</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const latestRubric = result?.iterations?.[result.iterations.length - 1]?.rubric;
+                      return (
+                        <div className="space-y-1.5 text-[11px] font-mono border-t sm:border-t-0 sm:border-l border-white/[0.06] pt-3 sm:pt-0 sm:pl-4">
+                          <div className="flex justify-between text-[#8e8e98]">
+                            <span>Completeness</span>
+                            <span className="text-white">{latestRubric ? `${latestRubric.completeness}%` : '--'}</span>
+                          </div>
+                          <div className="flex justify-between text-[#8e8e98]">
+                            <span>Boundary Coverage</span>
+                            <span className="text-white">{latestRubric ? `${latestRubric.coverage}%` : '--'}</span>
+                          </div>
+                          <div className="flex justify-between text-[#8e8e98]">
+                            <span>Step Feasibility</span>
+                            <span className="text-white">{latestRubric ? `${latestRubric.feasibility}%` : '--'}</span>
+                          </div>
+                          <div className="flex justify-between text-[#8e8e98]">
+                            <span>Zero Redundancy</span>
+                            <span className="text-white">{latestRubric ? `${latestRubric.redundancy}%` : '--'}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                   </div>
 
@@ -361,7 +366,7 @@ export const PipelineStudio: React.FC = () => {
                 <div className="space-y-4 flex-1 flex flex-col">
                   <div className="flex items-center justify-between text-xs font-mono">
                     <span className="text-[#15846e] font-semibold">
-                      ✓ CONVERGED AFTER {result.iterations_taken} ITERATIONS
+                      ✓ {result.converged ? 'CONVERGED' : 'COMPLETED'} AFTER {result.total_iterations} {result.total_iterations === 1 ? 'ITERATION' : 'ITERATIONS'}
                     </span>
                     <span className="text-[#8e8e98]">
                       Pydantic v2 Validated
@@ -382,7 +387,10 @@ export const PipelineStudio: React.FC = () => {
                         </div>
                         <div className="text-white font-medium">{tc.title}</div>
                         <div className="text-[#8e8e98] text-[11px] leading-relaxed">
-                          <span className="text-white/60">Expected:</span> {tc.expected_results}
+                          <span className="text-white/60">Expected:</span>{' '}
+                          {Array.isArray(tc.expected_results)
+                            ? tc.expected_results.join(' · ')
+                            : tc.expected_results}
                         </div>
                       </div>
                     ))}
@@ -406,7 +414,7 @@ export const PipelineStudio: React.FC = () => {
                         onClick={() => handleExport('testrail')}
                         className="text-[11px] font-mono px-3 py-1.5 rounded-full bg-white/[0.04] hover:bg-[#8052ff] hover:text-white text-[#c2c2cb] border border-white/[0.08] cursor-pointer transition-colors"
                       >
-                        TestRail (.csv)
+                        TestRail (.json)
                       </button>
                       <button
                         onClick={() => handleExport('junit')}
