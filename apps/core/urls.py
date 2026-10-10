@@ -16,4 +16,9 @@ urlpatterns = [
     path('api/search-knowledge/', views.search_knowledge, name='search_knowledge'),   
     path('api/update-status/', views.update_test_case_status, name='update_test_case_status'),
     path('api/stream-logs/', stream_logs, name='stream_logs'),
+
+    # Autonomous Multi-Agent Pipeline routes
+    path('pipeline/', views.pipeline_view, name='pipeline'),
+    path('pipeline/run/', views.pipeline_run_api, name='pipeline_run'),
+    path('pipeline/export/', views.pipeline_export_tms, name='pipeline_export'),
 ]
