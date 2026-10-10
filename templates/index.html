@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}CodeBrain - Dashboard{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        Welcome to CodeBrain Test Case Management Platform
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>{{ total_test_cases }}</h3>
+                        <p class="mb-0">Total Test Cases</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>{{ pending_count }}</h3>
+                        <p class="mb-0">Pending Review</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>{{ approved_count }}</h3>
+                        <p class="mb-0">Approved</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h3>{{ rejected_count }}</h3>
+                        <p class="mb-0">Rejected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

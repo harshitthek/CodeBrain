@@ -1,0 +1,23 @@
+1. Analyze requirement docs, generate requirement test points & test scenarios
+  Download PRD HTML doc from wiki -> Convert HTML to markdown -> Parse markdown
+2. Build knowledge graph kg-gen
+
+
+
+
+
+
+
+
+
+
+
+4. Support attaching files during test case generation --- Currently investigated LLM APIs only support text interaction, no direct file upload
+5. Research AI bug finding tools
+
+Required fields for test cases:
+- Case description
+- Test steps
+- Expected result
+- Module
+- Priority

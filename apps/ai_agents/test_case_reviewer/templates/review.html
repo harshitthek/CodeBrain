@@ -1,0 +1,671 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}CodeBrain - Test Case Review{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="card">
+    <div class="card-header">
+        Test Case Review
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs" id="reviewTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="pending-tab" data-toggle="tab" href="#pending" role="tab">
+                    Pending Review
+                    <div class="total-count">Total: {{ pending_test_cases.paginator.count }}</div>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="approved-tab" data-toggle="tab" href="#approved" role="tab">
+                    Approved
+                    <div class="total-count">Total: {{ approved_test_cases.paginator.count }}</div>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="rejected-tab" data-toggle="tab" href="#rejected" role="tab">
+                    Rejected
+                    <div class="total-count">Total: {{ rejected_test_cases.paginator.count }}</div>
+                </a>
+            </li>
+        </ul>
+        
+        <div class="tab-content mt-3" id="reviewTabsContent">
+            <!-- Pending Review Tab -->
+            <div class="tab-pane fade show active" id="pending" role="tabpanel">
+                {% if pending_test_cases %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="select-all-pending">
+                                        <label class="custom-control-label" for="select-all-pending"></label>
+                                    </div>
+                                </th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Test Steps</th>
+                                <th>Expected Results</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test_case in pending_test_cases %}
+                            <tr>
+                                <td>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input pending-case-checkbox" 
+                                               id="pending-{{ test_case.id }}" data-id="{{ test_case.id }}">
+                                        <label class="custom-control-label" for="pending-{{ test_case.id }}"></label>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-warning">Pending</span></td>
+                                <td>{{ test_case.description }}</td>
+                                <td>{{ test_case.test_steps }}</td>
+                                <td>{{ test_case.expected_results }}</td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm review-button" data-id="{{ test_case.id }}">AI Review</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <button id="copy-selected-pending" class="btn btn-primary mr-2">Copy</button>
+                    <button id="export-excel-pending" class="btn btn-success mr-2">Export to Excel</button>
+                    <button id="delete-selected-pending" class="btn btn-danger">Delete Selected</button>
+                </div>
+                
+                <div class="pagination-info">
+                    <span class="total-records">Total: {{ pending_test_cases.paginator.count }}</span>
+                    <div class="pagination-buttons">
+                        {% if pending_test_cases.has_previous %}
+                        <a href="?pending_page={{ pending_test_cases.previous_page_number }}" class="btn btn-primary btn-sm prev-page" data-page-type="pending">Previous</a>
+                        {% endif %}
+                        <span class="page-numbers">{{ pending_test_cases.number }} / {{ pending_test_cases.paginator.num_pages }}</span>
+                        {% if pending_test_cases.has_next %}
+                        <a href="?pending_page={{ pending_test_cases.next_page_number }}" class="btn btn-primary btn-sm next-page" data-page-type="pending">Next</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                    <div class="alert alert-info">No test cases pending review</div>
+                {% endif %}
+            </div>
+            
+            <!-- Approved Tab -->
+            <div class="tab-pane fade" id="approved" role="tabpanel">
+                {% if approved_test_cases %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="select-all">
+                                        <label class="custom-control-label" for="select-all"></label>
+                                    </div>
+                                </th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Test Steps</th>
+                                <th>Expected Results</th>
+                                <th>Feedback</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test_case in approved_test_cases %}
+                            <tr>
+                                <td>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input case-checkbox" 
+                                               id="case-{{ test_case.id }}" data-id="{{ test_case.id }}">
+                                        <label class="custom-control-label" for="case-{{ test_case.id }}"></label>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-success">Approved</span></td>
+                                <td>{{ test_case.description }}</td>
+                                <td>{{ test_case.test_steps }}</td>
+                                <td>{{ test_case.expected_results }}</td>
+                                <td>
+                                    {% if test_case.reviews.exists %}
+                                        {{ test_case.reviews.last.review_comments }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <button id="copy-selected" class="btn btn-primary mr-2">Copy</button>
+                    <button id="export-excel" class="btn btn-success mr-2">Export to Excel</button>
+                    <button id="delete-selected-approved" class="btn btn-danger">Delete Selected</button>
+                </div>
+                
+                <div class="pagination-info">
+                    <span class="total-records">Total: {{ approved_test_cases.paginator.count }}</span>
+                    <div class="pagination-buttons">
+                        {% if approved_test_cases.has_previous %}
+                        <a href="?approved_page={{ approved_test_cases.previous_page_number }}" class="btn btn-primary btn-sm prev-page" data-page-type="approved">Previous</a>
+                        {% endif %}
+                        <span class="page-numbers">{{ approved_test_cases.number }} / {{ approved_test_cases.paginator.num_pages }}</span>
+                        {% if approved_test_cases.has_next %}
+                        <a href="?approved_page={{ approved_test_cases.next_page_number }}" class="btn btn-primary btn-sm next-page" data-page-type="approved">Next</a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% else %}
+                    <div class="alert alert-info">No approved test cases</div>
+                {% endif %}
+            </div>
+            
+            <!-- Rejected Tab -->
+            <div class="tab-pane fade" id="rejected" role="tabpanel">
+                {% if rejected_test_cases %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 40px;">
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="select-all-rejected">
+                                        <label class="custom-control-label" for="select-all-rejected"></label>
+                                    </div>
+                                </th>
+                                <th>Status</th>
+                                <th>Description</th>
+                                <th>Test Steps</th>
+                                <th>Expected Results</th>
+                                <th>Review Feedback</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test_case in rejected_test_cases %}
+                            <tr>
+                                <td>
+                                    <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input rejected-case-checkbox" 
+                                               id="rejected-case-{{ test_case.id }}" data-id="{{ test_case.id }}">
+                                        <label class="custom-control-label" for="rejected-case-{{ test_case.id }}"></label>
+                                    </div>
+                                </td>
+                                <td><span class="badge badge-danger">Rejected</span></td>
+                                <td>{{ test_case.description }}</td>
+                                <td>{{ test_case.test_steps }}</td>
+                                <td>{{ test_case.expected_results }}</td>
+                                <td>
+                                    {% if test_case.reviews.exists %}
+                                        {{ test_case.reviews.last.review_comments }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm review-button" data-id="{{ test_case.id }}">Re-review</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <button id="delete-selected" class="btn btn-danger">Delete Selected</button>
+                </div>
+                
+                <div class="pagination-info">
+                    <span class="total-records">Total: {{ rejected_test_cases.paginator.count }}</span>
+                    <div class="pagination-buttons">
+                        {% if rejected_test_cases.has_previous %}
+                        <a href="?rejected_page={{ rejected_test_cases.previous_page_number }}" class="btn btn-primary btn-sm prev-page" data-page-type="rejected">Previous</a>
+                        {% endif %}
+                        <span class="page-numbers">{{ rejected_test_cases.number }} / {{ rejected_test_cases.paginator.num_pages }}</span>
+                        {% if rejected_test_cases.has_next %}
+                        <a href="?rejected_page={{ rejected_test_cases.next_page_number }}" class="btn btn-primary btn-sm next-page" data-page-type="rejected">Next</a>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% else %}
+                    <div class="alert alert-info">No rejected test cases</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Tab container styles */
+    .nav-tabs {
+        border: none;
+        background-color: #f8f9fa;
+        padding: 10px 10px 0;
+        display: flex;
+        gap: 0;
+    }
+    
+    /* Tab button base styles */
+    .nav-tabs .nav-link {
+        border: none;
+        padding: 12px 25px;
+        margin: 0;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.3s ease;
+        background-color: #e9ecef;
+        color: #495057;
+        position: relative;
+        font-weight: 500;
+    }
+    
+    /* Tab hover effect */
+    .nav-tabs .nav-link:hover {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    /* Active tab styles */
+    .nav-tabs .nav-link.active {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    /* Badge styles inside tab */
+    .nav-tabs .badge {
+        font-weight: 500;
+        font-size: 14px;
+        padding: 8px 16px;
+        border-radius: 0;
+        transition: all 0.3s ease;
+        background: transparent;
+        border: none;
+    }
+    
+    /* Badge colors per status */
+    .nav-link.active .badge-warning,
+    .nav-link:hover .badge-warning {
+        color: #fff;
+    }
+    
+    .nav-link.active .badge-success,
+    .nav-link:hover .badge-success {
+        color: #fff;
+    }
+    
+    .nav-link.active .badge-danger,
+    .nav-link:hover .badge-danger {
+        color: #fff;
+    }
+    
+    /* Tab content area styles */
+    .tab-content {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-top: 2px solid #007bff;
+        padding: 20px;
+    }
+    
+    /* Cursor pointer */
+    .nav-tabs .nav-link {
+        cursor: pointer;
+    }
+    
+    /* Remove gap between tabs */
+    .nav-item {
+        margin-bottom: 0;
+        margin-right: -1px;
+    }
+    
+    /* Total count display styles */
+    .nav-tabs .nav-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 12px 25px 8px;
+    }
+    
+    .total-count {
+        font-size: 12px;
+        margin-top: 4px;
+        opacity: 0.8;
+        font-weight: normal;
+    }
+    
+    /* Active and hover total count color */
+    .nav-tabs .nav-link.active .total-count,
+    .nav-tabs .nav-link:hover .total-count {
+        color: #fff;
+    }
+    
+    /* Inactive tab total count color */
+    .nav-tabs .nav-link .total-count {
+        color: #6c757d;
+    }
+    
+    /* Pagination info container */
+    .pagination-info {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 10px 0;
+        border-top: 1px solid #dee2e6;
+        margin-top: 15px;
+    }
+    
+    /* Total records style */
+    .total-records {
+        color: #666;
+        margin-right: 15px;
+    }
+    
+    /* Pagination buttons container */
+    .pagination-buttons {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    /* Page numbers style */
+    .page-numbers {
+        color: #666;
+        padding: 5px 10px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    
+    /* Previous / Next buttons style */
+    .prev-page,
+    .next-page {
+        padding: 4px 12px;
+        font-size: 14px;
+    }
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'review.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all functionality
+    const selectAllCheckbox = document.getElementById('select-all');
+    const caseCheckboxes = document.querySelectorAll('.case-checkbox');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            caseCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+    
+    caseCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (!this.checked && selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            } else if (Array.from(caseCheckboxes).every(cb => cb.checked) && selectAllCheckbox) {
+                selectAllCheckbox.checked = true;
+            }
+        });
+    });
+    
+    // Copy button functionality
+    const copyButton = document.getElementById('copy-selected');
+    if (copyButton) {
+        copyButton.addEventListener('click', async function() {
+            // Get selected test case IDs
+            const selectedIds = Array.from(document.querySelectorAll('.case-checkbox:checked'))
+                .map(checkbox => checkbox.getAttribute('data-id'));
+                
+            if (selectedIds.length === 0) {
+                alert('Please select test cases to copy first.');
+                return;
+            }
+            
+            try {
+                // Get test case data
+                const response = await fetch('test_case_reviewer/api/copy-test-cases/?ids=' + selectedIds.join(','), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message);
+                }
+                
+                // Format and copy to clipboard
+                const textToCopy = data.test_cases.map(testCase => (
+                    `Description: ${testCase.description}\n` +
+                    `Steps: ${testCase.test_steps}\n` +
+                    `Expected Results: ${testCase.expected_results}\n` +
+                    `----------------------------------------`
+                )).join('\n\n');
+                
+                // Check if clipboard API is available
+                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(textToCopy)
+                        .then(() => {
+                            console.log('Test cases copied to clipboard');
+                            alert('Test cases copied to clipboard!');
+                        })
+                        .catch(err => {
+                            console.error('Copy failed:', err);
+                            // Fallback copy method
+                            const textarea = document.createElement('textarea');
+                            textarea.value = textToCopy;
+                            textarea.style.position = 'fixed';  // Avoid scrolling to bottom
+                            document.body.appendChild(textarea);
+                            textarea.focus();
+                            textarea.select();
+                            
+                            try {
+                                const successful = document.execCommand('copy');
+                                console.log(successful ? 'Copy successful' : 'Copy failed');
+                                alert('Test cases copied to clipboard!');
+                            } catch (err) {
+                                console.error('Copy failed:', err);
+                                alert('Copy failed: ' + err.message);
+                            }
+                            
+                            document.body.removeChild(textarea);
+                        });
+                } else {
+                    // Fallback copy method
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    textarea.style.position = 'fixed';  // Avoid scrolling to bottom
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    
+                    try {
+                        const successful = document.execCommand('copy');
+                        console.log(successful ? 'Copy successful' : 'Copy failed');
+                        alert('Test cases copied to clipboard!');
+                    } catch (err) {
+                        console.error('Copy failed:', err);
+                        alert('Copy failed: ' + err.message);
+                    }
+                    
+                    document.body.removeChild(textarea);
+                }
+            } catch (error) {
+                console.error('Operation failed:', error);
+                alert('Operation failed: ' + error.message);
+            }
+        });
+    }
+    
+    // Export to Excel button function
+    const exportButton = document.getElementById('export-excel');
+    if (exportButton) {
+        exportButton.addEventListener('click', function() {
+            const selectedIds = Array.from(document.querySelectorAll('.case-checkbox:checked'))
+                .map(checkbox => checkbox.getAttribute('data-id'));
+                
+            if (selectedIds.length === 0) {
+                alert('Please select test cases to export first.');
+                return;
+            }
+            
+            // Export selected test cases to Excel
+            window.location.href = 'test_case_reviewer/api/export-test-cases-excel/?ids=' + selectedIds.join(',');
+        });
+    }
+    
+    // Pending - Select All / Checkbox
+    const selectAllPending = document.getElementById('select-all-pending');
+    const pendingCheckboxes = document.querySelectorAll('.pending-case-checkbox');
+    if (selectAllPending) {
+        selectAllPending.addEventListener('change', function() {
+            pendingCheckboxes.forEach(cb => {
+                cb.checked = this.checked;
+            });
+        });
+    }
+    pendingCheckboxes.forEach(cb => {
+        cb.addEventListener('change', function() {
+            if (!this.checked && selectAllPending) {
+                selectAllPending.checked = false;
+            } else if (Array.from(pendingCheckboxes).every(x => x.checked) && selectAllPending) {
+                selectAllPending.checked = true;
+            }
+        });
+    });
+
+    // Pending - Copy
+    const copyPendingBtn = document.getElementById('copy-selected-pending');
+    if (copyPendingBtn) {
+        copyPendingBtn.addEventListener('click', async function() {
+            const ids = Array.from(document.querySelectorAll('.pending-case-checkbox:checked'))
+                .map(cb => cb.getAttribute('data-id'));
+            if (ids.length === 0) {
+                alert('Please select test cases to copy first.');
+                return;
+            }
+            try {
+                const response = await fetch('test_case_reviewer/api/copy-test-cases/?ids=' + ids.join(','), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                });
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.message || 'Copy failed');
+                }
+                const textToCopy = data.test_cases.map(testCase => (
+                    `Description: ${testCase.description}\n` +
+                    `Steps: ${testCase.test_steps}\n` +
+                    `Expected Results: ${testCase.expected_results}\n` +
+                    `----------------------------------------`
+                )).join('\n\n');
+                if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(textToCopy);
+                    alert('Test cases copied to clipboard!');
+                } else {
+                    const textarea = document.createElement('textarea');
+                    textarea.value = textToCopy;
+                    textarea.style.position = 'fixed';
+                    document.body.appendChild(textarea);
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    alert('Test cases copied to clipboard!');
+                }
+            } catch (error) {
+                console.error('Operation failed:', error);
+                alert('Operation failed: ' + error.message);
+            }
+        });
+    }
+
+    // Pending - Export to Excel
+    const exportPendingBtn = document.getElementById('export-excel-pending');
+    if (exportPendingBtn) {
+        exportPendingBtn.addEventListener('click', function() {
+            const ids = Array.from(document.querySelectorAll('.pending-case-checkbox:checked'))
+                .map(cb => cb.getAttribute('data-id'));
+            if (ids.length === 0) {
+                alert('Please select test cases to export first.');
+                return;
+            }
+            window.location.href = 'test_case_reviewer/api/export-test-cases-excel/?ids=' + ids.join(',');
+        });
+    }
+    // Rejected tab Select All function
+    const selectAllRejected = document.getElementById('select-all-rejected');
+    const rejectedCheckboxes = document.querySelectorAll('.rejected-case-checkbox');
+    
+    if (selectAllRejected) {
+        selectAllRejected.addEventListener('change', function() {
+            rejectedCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+        });
+    }
+    
+    rejectedCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (!this.checked && selectAllRejected) {
+                selectAllRejected.checked = false;
+            } else if (Array.from(rejectedCheckboxes).every(cb => cb.checked) && selectAllRejected) {
+                selectAllRejected.checked = true;
+            }
+        });
+    });
+    
+    // Common - Bulk delete binding
+    function bindBulkDelete(buttonId, checkboxSelector) {
+        const btn = document.getElementById(buttonId);
+        if (!btn) return;
+        btn.addEventListener('click', async function() {
+            const selectedIds = Array.from(document.querySelectorAll(`${checkboxSelector}:checked`))
+                .map(checkbox => checkbox.getAttribute('data-id'));
+            if (selectedIds.length === 0) {
+                alert('Please select test cases to delete first.');
+                return;
+            }
+            if (!confirm('Are you sure you want to delete the selected test cases? This action cannot be undone.')) {
+                return;
+            }
+            try {
+                const response = await fetch('api/delete-test-cases/?ids=' + selectedIds.join(','), {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    window.location.reload();
+                    alert('Deleted successfully!');
+                } else {
+                    throw new Error(data.message || 'Delete failed');
+                }
+            } catch (error) {
+                console.error('Delete failed:', error);
+                alert('Delete failed: ' + error.message);
+            }
+        });
+    }
+
+    // Bind delete buttons for all three tabs
+    bindBulkDelete('delete-selected-pending', '.pending-case-checkbox');
+    bindBulkDelete('delete-selected-approved', '.case-checkbox');
+    bindBulkDelete('delete-selected', '.rejected-case-checkbox');
+});
+</script>
+{% endblock %} 

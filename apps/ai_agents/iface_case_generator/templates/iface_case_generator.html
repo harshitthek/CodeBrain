@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}CodeBrain - API Test Case Generator{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-container {
+        margin: 20px;
+        padding: 20px;
+    }
+    
+    .upload-area {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 60px 40px;
+        text-align: center;
+        background-color: #f8f9fa;
+        margin: 30px 0;
+        min-height: 300px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .upload-area:hover {
+        border-color: #007bff;
+        background-color: #f1f7ff;
+    }
+
+    .upload-area.highlight {
+        border-color: #28a745;
+        background-color: #d4edda;
+        transform: scale(1.02);
+        transition: all 0.2s ease;
+    }
+
+    .file-input-button {
+        padding: 12px 30px;
+        font-size: 16px;
+        margin-bottom: 20px;
+    }
+
+    .upload-hint {
+        color: #666;
+        font-size: 14px;
+        margin-top: 15px;
+    }
+
+    .submit-container {
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    .submit-button {
+        padding: 12px 40px;
+        font-size: 16px;
+    }
+
+    .selected-file {
+        margin-top: 15px;
+        color: #28a745;
+        font-weight: 500;
+        display: none;  /* Initially hidden */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <h4 class="mb-4">API Test Case Generator</h4>
+    <form method="post" enctype="multipart/form-data" id="uploadForm">
+        {% csrf_token %}
+        <div class="upload-area">
+            <input type="file" name="single_file" id="single_file" style="display: none;">
+            <button type="button" class="btn btn-primary file-input-button" onclick="document.getElementById('single_file').click()">
+                Select File
+            </button>
+            <div class="upload-hint">
+                Drag and drop file here or click to select<br>
+                <span style="font-weight: bold; color: #dc3545;">(File must be an API JSON file exported from MeterSphere)</span>
+            </div>
+            <div id="selected-file" class="selected-file"></div>
+            <div id="uploadStatus" style="margin-top: 10px; color: #666;"></div>
+        </div>
+        <div class="submit-container">
+            <button type="submit" class="btn btn-success submit-button" id="submitBtn">Upload File</button>
+        </div>
+    </form>
+</div>
+
+<!-- API Selection Section -->
+<div id="api-selection" style="display: none;">
+    <h3>Select APIs to Generate Test Cases</h3>
+    <!-- Test Case Generation Rules (Markdown edit) -->
+    <div class="mt-3" id="rule-editor-section">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-2">Test Case Generation Rules <span style="color: red; font-style: italic;">(If you are familiar with prompt engineering, you can customize rules to fit your needs)</span></h5>
+            <small id="rule-char-count" class="text-muted">0/1000</small>
+        </div>
+        <div class="row">
+            <div class="col-12">
+                <textarea id="rule-editor" class="form-control" rows="10" style="height: 200px;" placeholder="Edit rules here (Markdown)" maxlength="1000"></textarea>
+                <div class="mt-2">
+                    <small id="rule-validate-msg" class="text-muted"></small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <div style="max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;">
+            <table style="width: 100%; border-collapse: collapse; margin: 0;">
+                <thead style="position: sticky; top: 0; z-index: 10; background-color: #007bff;">
+                    <tr>
+                        <th style="width: 80px; background-color: #007bff; color: white; border: 1px solid #0056b3; text-align: center; padding: 8px;">
+                            <input type="checkbox" id="select-all" style="margin: 0; transform: scale(1.2);">
+                        </th>
+                        <th style="width: 40%; background-color: #007bff; color: white; border: 1px solid #0056b3; padding: 8px;">API Path</th>
+                        <th style="background-color: #007bff; color: white; border: 1px solid #0056b3; padding: 8px;">API Name</th>
+                    </tr>
+                </thead>
+                <tbody id="api-table-body">
+                    <!-- Dynamically generated API table rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <label for="count-per-api">Test Cases per API:</label>
+        <input type="number" id="count-per-api" class="form-control" value="1" min="1" max="50">
+    </div>
+    
+    <div class="form-group">
+        <label for="priority">Test Case Priority:</label>
+        <select id="priority" class="form-control">
+            <option value="P0">P0 - Critical</option>
+            <option value="P1">P1 - High</option>
+            <option value="P2">P2 - Medium</option>
+            <option value="P3">P3 - Low</option>
+            <option value="P4">P4 - Minimal</option>
+        </select>
+    </div>
+    
+    <div class="form-group">
+        <label for="llm-provider">LLM Provider:</label>
+        <select id="llm-provider" class="form-control">
+            {% for key, provider in llm_providers.items %}
+            <option value="{{ key }}" {% if key == llm_provider %}selected{% endif %}>
+                {{ provider.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <button type="button" class="btn btn-primary" id="generateBtn">Generate API Test Cases</button>
+</div>
+
+<!-- Progress Section -->
+<div id="generation-progress" style="display: none;">
+    <h3>Generating API Test Cases...</h3>
+    <div class="progress">
+        <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+    </div>
+    <div id="progress-text">Preparing...</div>
+    <div id="current-api" class="text-muted small mt-2"></div>
+</div>
+
+<!-- Result Section -->
+<div id="generation-result" style="display: none;">
+    <h3>API Test Case Generation Completed</h3>
+    <div id="result-message"></div>
+    <a id="download-link" href="#" class="btn btn-success">Download Updated File</a>
+</div>
+
+<!-- Live logs area -->
+<div id="live-logs" style="margin-top: 16px; height: 620px; border: 2px solid #28a745; border-radius: 4px; padding: 8px; overflow: auto; background: #000000; color: #ffffff; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.5; display: none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'iface_case_generator.js' %}"></script>
+{% endblock %}

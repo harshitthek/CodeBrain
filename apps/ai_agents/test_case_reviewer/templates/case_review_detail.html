@@ -1,0 +1,292 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeBrain - AI Test Case Review</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <!-- Custom styles -->
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .card {
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        textarea {
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">AI Test Case Review</h5>
+            </div>
+            <div class="card-body">
+                <form id="caseReviewForm">
+                    <div class="form-group">
+                        <label for="status">Status</label>
+                        <select class="form-control" id="status" name="status">
+                            <option value="pending">Pending Review</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+
+                    <!-- Three dropdowns using Bootstrap grid system -->
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="bu">BU</label>
+                                <select class="form-control" id="bu" name="bu">
+                                    <option value="">Select BU</option>
+                                    <option value="education">Education</option>
+                                    <option value="user_center">User Center</option>
+                                    <option value="collaboration">Collaboration</option>
+                                    <option value="im">IM</option>
+                                    <option value="workspace">Workspace</option>
+                                    <option value="recruitment">Recruitment</option>
+                                    <option value="work_management">Work Management</option>
+                                    <option value="ai_application">AI Applications</option>
+                                    <option value="operation_platform">Operations Platform</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="feature">Feature</label>
+                                <select class="form-control" id="feature" name="feature">
+                                    <option value="">Select Feature</option>
+                                    <option value="feature1">Feature1</option>
+                                    <option value="feature2">Feature2</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="priority">Priority</label>
+                                <select class="form-control" id="priority" name="priority">
+                                    <option value="">Select Priority</option>
+                                    <option value="p0">P0</option>
+                                    <option value="p1">P1</option>
+                                    <option value="p2">P2</option>
+                                    <option value="p3">P3</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Test Case Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="test_steps">Test Steps</label>
+                        <textarea class="form-control" id="test_steps" name="test_steps" rows="5"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="expected_results">Expected Results</label>
+                        <textarea class="form-control" id="expected_results" name="expected_results" rows="5"></textarea>
+                    </div>
+
+                    <!-- AI Review Result -->
+                    <div class="form-group">
+                        <label for="ai_review_result">AI Review Result</label>
+                        <textarea class="form-control" id="ai_review_result" name="ai_review_result" rows="5" readonly></textarea>
+                    </div>
+
+                    <input type="hidden" id="test_case_id" name="test_case_id">
+                </form>
+            </div>
+            <div class="card-footer text-right">
+                <button type="button" class="btn btn-primary" id="startReviewBtn">Start Review</button>
+                <button type="button" class="btn btn-success" id="saveBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery and Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="{% static 'js/extra/bootstrap.bundle.min.js' %}"></script>
+    
+    <script>
+    // Helper function to get CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // Initialization on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get test case ID from URL and load data
+        const urlParams = new URLSearchParams(window.location.search);
+        const testCaseId = urlParams.get('id');
+        
+        if (testCaseId) {
+            // Get test case data
+            fetch(`api/test-case/${testCaseId}/`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Populate form data
+                document.getElementById('test_case_id').value = data.id;
+                document.getElementById('description').value = data.description;
+                document.getElementById('test_steps').value = data.test_steps;
+                document.getElementById('expected_results').value = data.expected_results;
+                
+                // Set status select value
+                const statusSelect = document.getElementById('status');
+                for(let i = 0; i < statusSelect.options.length; i++) {
+                    if(statusSelect.options[i].value === data.status) {
+                        statusSelect.selectedIndex = i;
+                        break;
+                    }
+                }
+                
+                console.log('Loaded status:', data.status);
+            })
+            .catch(error => {
+                console.error('Failed to get test case data:', error);
+                alert('Failed to get test case data. See console for details.');
+            });
+        }
+
+        // Start review button click event
+        document.getElementById('startReviewBtn').onclick = function() {
+            const testCaseId = document.getElementById('test_case_id').value;
+            const aiReviewResult = document.getElementById('ai_review_result');
+            const button = this;
+            
+            // Display loading state
+            aiReviewResult.value = 'Reviewing...';
+            button.disabled = true;  // Disable button to prevent duplicate clicks
+            
+            fetch('api/review/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    test_case_id: testCaseId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update textarea content first
+                    aiReviewResult.value = data.review_result;
+                    // Ensure DOM updates before showing alert
+                    return new Promise(resolve => {
+                        setTimeout(() => {
+                            alert('AI review completed!');
+                            resolve();
+                        }, 0);
+                    });
+                } else {
+                    aiReviewResult.value = 'Review failed: ' + data.message;
+                    alert('Review failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Review request failed:', error);
+                aiReviewResult.value = 'Review request failed. See console for details.';
+                alert('Review request failed. See console for details.');
+            })
+            .finally(() => {
+                button.disabled = false;  // Re-enable button
+            });
+        };
+
+        // Save button click event
+        document.getElementById('saveBtn').onclick = function() {
+            const form = document.getElementById('caseReviewForm');
+            const formData = {
+                test_case_id: form.test_case_id.value,
+                status: form.status.value,
+                bu: form.bu.value,
+                feature: form.feature.value,
+                priority: form.priority.value,
+                description: form.description.value,
+                test_steps: form.test_steps.value,
+                expected_results: form.expected_results.value
+            };
+
+            fetch('api/update-test-case/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Saved successfully!');
+                    window.close();
+                    window.opener.location.reload();
+                } else {
+                    alert('Save failed: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Save failed:', error);
+                alert('Save failed. See console for details.');
+            });
+        };
+
+        // Initialize Feature select
+        initFeatureSelect();
+    });
+
+    // Feature select initialization
+    function initFeatureSelect() {
+        const featureSelect = document.getElementById('feature');
+        
+        const addNewOption = document.createElement('option');
+        addNewOption.value = 'add_new';
+        addNewOption.textContent = '+ Add New Feature';
+        featureSelect.appendChild(addNewOption);
+
+        // Listen for changes
+        featureSelect.addEventListener('change', function() {
+            if (this.value === 'add_new') {
+                const newFeature = prompt('Please enter new Feature name:');
+                if (newFeature && newFeature.trim()) {
+                    // Create new option
+                    const option = document.createElement('option');
+                    option.value = newFeature.toLowerCase().replace(/\s+/g, '_');
+                    option.textContent = newFeature;
+                    
+                    // Insert before "+ Add New Feature" option
+                    featureSelect.insertBefore(option, addNewOption);
+                    
+                    // Select newly added option
+                    this.value = option.value;
+                } else {
+                    // Reset if canceled or empty
+                    this.value = '';
+                }
+            }
+        });
+    }
+    </script>
+</body>
+</html> 

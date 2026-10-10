@@ -1,0 +1,166 @@
+{
+    "id": null,
+    "name": "GENERATE_BY_LLM",
+    "priority": "USER_SET",
+    "num": null,
+    "status": "DONE",
+    "lastReportStatus": null, 
+    "lastReportId": null,
+    "projectId": null,
+    "apiDefinitionId": null,
+    "apiDefinitionNum": null,
+    "apiDefinitionName": null,
+    "environmentId": null,
+    "createTime": null,
+    "createUser": null,
+    "updateTime": null,
+    "updateUser": null,
+    "deleteTime": null,
+    "deleteUser": null,
+    "follow": null,
+    "method": null,
+    "path": null,
+    "environmentName": null,
+    "createName": null,
+    "updateName": null,
+    "deleteName": null,
+    "tags": "['CodeBrain']",
+    "passRate": "NONE",
+    "request": {
+      "polymorphicName": "MsHTTPElement",
+      "stepId": null,
+      "resourceId": null,
+      "projectId": null,
+      "name": "GENERATE_BY_LLM",
+      "enable": true,
+      "children": [{
+        "polymorphicName": "MsCommonElement",
+        "stepId": null,
+        "resourceId": null,
+        "projectId": null,
+        "name": null,
+        "enable": true,
+        "children": [],
+        "parent": null,
+        "csvIds": null,
+        "preProcessorConfig": {
+          "enableGlobal": true,
+          "processors": []
+        },
+        "postProcessorConfig": {
+          "enableGlobal": true,
+          "processors": []
+        },
+        "assertionConfig": {
+          "enableGlobal": true,
+          "assertions": [
+            {
+              "assertionType": "RESPONSE_CODE",
+              "enable": true,
+              "name": "Status Code",
+              "id": "USER_SET", // TODO: Values exist in valid json files, to be confirmed
+              "projectId": null,
+              "condition": "EQUALS",
+              "expectedValue": "200"
+            },
+            {
+              "assertionType": "RESPONSE_HEADER",
+              "enable": true,
+              "name": "Response Header",
+              "id": "USER_SET", 
+              "projectId": null,
+              "assertions": [
+                {
+                  "enable": true,
+                  "header": "Content-Type",
+                  "condition": "EQUALS",
+                  "expectedValue": "application/json"
+                }
+              ]
+            },
+            {
+              "assertionType": "RESPONSE_BODY",
+              "enable": true,
+              "name": "Response Body",
+              "id": "USER_SET",
+              "projectId": null,
+              "assertionBodyType": "JSON_PATH",
+              "jsonPathAssertion": {
+                "assertions": [
+                  {
+                    "enable": true,
+                    "expression": "GENERATE:json_path_expression",
+                    "condition": "EQUALS",
+                    "expectedValue": "GENERATE:expected_value",
+                    "valid": true
+                  }
+                ]
+              },
+              "xpathAssertion": {
+                "responseFormat": "XML",
+                "assertions": []
+              },
+              "documentAssertion": "null",
+              "regexAssertion": {
+                "assertions": []
+              },
+              "bodyAssertionClassByType": "io.metersphere.project.api.assertion.body.MsJSONPathAssertion",
+              "bodyAssertionDataByType": {
+                "assertions": [
+                  {
+                    "enable": true,
+                    "expression": "GENERATE:json_path_expression",
+                    "condition": "EQUALS",
+                    "expectedValue": "GENERATE:expected_value",
+                    "valid": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }],
+      "parent": null,
+      "csvIds": null,
+      "customizeRequest": false,
+      "customizeRequestEnvEnable": false,
+      "path": null,
+      "method": null,
+      "body": null,  
+      "headers": null,  
+      "rest": [],
+      "query": "",
+      "otherConfig": {
+					"connectTimeout": 60000,
+					"responseTimeout": 60000,
+					"certificateAlias": null,
+					"followRedirects": true,
+					"autoRedirects": false
+				},
+				"authConfig": {
+					"authType": "NONE",
+					"basicAuth": {
+						"userName": null,
+						"password": null,
+						"valid": false
+					},
+					"digestAuth": {
+						"userName": null,
+						"password": null,
+						"valid": false
+					},
+					"httpauthValid": false
+				},
+      "moduleId": null,
+      "num": null,
+      "mockNum": null
+    },
+    "modulePath": null,
+    "moduleId": null,
+    "protocol": null,
+    "apiChange": null,
+    "inconsistentWithApi": null,
+    "ignoreApiDiff": null,
+    "ignoreApiChange": null
+}
+

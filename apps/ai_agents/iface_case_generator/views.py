@@ -1,0 +1,186 @@
+from apps.ai_agents.iface_case_generator.iface_case_generator import parse_api_definitions, generate_test_cases_for_apis
+
+from django.conf import settings
+from django.http import JsonResponse, FileResponse
+from apps.utils.progress_registry import get_progress as get_task_progress
+from apps.utils.logger_manager import get_logger, set_task_context, clear_task_context
+from django.shortcuts import render
+# from apps.ai_agents.common.base_prompts import PromptTemplateManager
+from apps.llm.utils import get_agent_llm_configs
+
+import json
+import os
+import time
+from pathlib import Path
+import yaml
+
+
+logger = get_logger(__name__)
+
+# Fetch LLM configurations
+llm_config = getattr(settings, 'LLM_PROVIDERS', {})
+DEFAULT_PROVIDER, PROVIDERS = get_agent_llm_configs("iface_case_generator")
+
+
+def iface_case_generator(request):
+    """
+    View function for API test case generator page
+    """
+    logger.info("===== Entering iface_case_generator view =====")
+    logger.info(f"Request method: {request.method}")
+    
+    if request.method == 'GET':
+        context = {
+            'llm_providers': PROVIDERS,
+            'llm_provider': DEFAULT_PROVIDER,
+        }
+        return render(request, 'iface_case_generator.html', context)
+    elif request.method == 'POST':
+        if 'single_file' in request.FILES:
+            uploaded_file = request.FILES['single_file']
+            logger.info(f"Received file: {uploaded_file.name}")
+            
+            # Check file type
+            if not uploaded_file.name.lower().endswith('.json'):
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Only JSON format files are supported'
+                })
+            
+            try:
+                # Ensure uploads directory exists
+                uploads_dir = os.path.join(settings.MEDIA_ROOT)
+                os.makedirs(uploads_dir, exist_ok=True)
+                
+                # Generate unique filename
+                file_name = uploaded_file.name
+                base_name, ext = os.path.splitext(file_name)
+                counter = 1
+                while os.path.exists(os.path.join(uploads_dir, file_name)):
+                    file_name = f"{base_name}_{counter}{ext}"
+                    counter += 1
+                
+                # Save file to uploads directory
+                file_path = os.path.join(uploads_dir, file_name)
+                with open(file_path, 'wb+') as f:
+                    for chunk in uploaded_file.chunks():
+                        f.write(chunk)
+                
+                logger.info(f"File saved successfully: {file_path}")
+                
+                # Parse JSON file and extract API list
+                api_list = parse_api_definitions(file_path)
+                
+                return JsonResponse({
+                    'success': True,
+                    'api_list': api_list,
+                    'file_path': file_path
+                })
+                
+            except Exception as e:
+                logger.error(f"Failed to save file: {str(e)}", exc_info=True)
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Failed to save file: {str(e)}'
+                })
+        
+        elif 'generate_test_cases' in request.POST:
+            file_path = request.POST.get('file_path')
+            selected_apis = json.loads(request.POST.get('selected_apis'))
+            count_per_api = int(request.POST.get('count_per_api', 1))
+            priority = request.POST.get('priority', 'P0')
+            llm_provider = request.POST.get('llm_provider', 'deepseek')
+            task_id = request.POST.get('task_id') or f"task_{int(time.time()*1000)}_{request.user.id if request.user.is_authenticated else 'anon'}"
+            
+            # Background thread for asynchronous generation, return immediately
+            import threading
+            def _bg_job():
+                try:
+                    set_task_context(task_id)
+                    rules_override = request.POST.get('rules_override') or None
+                    generate_test_cases_for_apis(
+                        file_path, selected_apis, count_per_api, priority, llm_provider, task_id,
+                        rules_override=rules_override
+                    )
+                except Exception as e:
+                    logger.error(f"Background generation failed: {e}")
+                finally:
+                    clear_task_context()
+            t = threading.Thread(target=_bg_job, name=f"gen-{task_id}")
+            t.daemon = True
+            t.start()
+            
+            return JsonResponse({
+                'success': True,
+                'task_id': task_id
+            })
+        
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No file received'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'error': 'Unsupported request method'
+    })
+
+
+def get_generation_progress_api(request):
+    """Query progress: return progress from in-memory registry by task_id"""
+    try:
+        task_id = request.GET.get('task_id')
+        if not task_id:
+            return JsonResponse({'success': False, 'message': 'Missing task_id'})
+        progress = get_task_progress(task_id)
+        if not progress:
+            return JsonResponse({'success': False, 'message': 'Progress information not found'})
+        
+        progress_dict = progress.dict() if hasattr(progress, 'dict') else progress
+        return JsonResponse({'success': True, 'progress': progress_dict})
+    except Exception as e:
+        logger.error(f"Failed to get progress: {e}")
+        return JsonResponse({'success': False, 'message': str(e)})
+
+
+def get_testcase_rule_template(request):
+    """Return 'Test Case Generation Rules' text from template (read-only)"""
+    try:
+        config_path = Path(__file__).parent / 'configs' / 'prompt_config.yaml'
+        with open(config_path, 'r', encoding='utf-8') as f:
+            cfg = yaml.safe_load(f) or {}
+
+        human_tpl = (cfg.get('human_template') or '').strip()
+        rule_text = ''
+        if human_tpl:
+            marker = '## Test Case Generation Rules'
+            idx = human_tpl.find(marker)
+            if idx >= 0:
+                rule_text = human_tpl[idx:]
+            if not rule_text:
+                rule_text = human_tpl
+        return JsonResponse({'success': True, 'rule_text': rule_text})
+    except Exception as e:
+        logger.error(f"Failed to read rule template: {e}")
+        return JsonResponse({'success': False, 'message': str(e)})
+
+
+def download_file(request):
+    """File download view"""
+    file_path = request.GET.get('file_path')
+    if not file_path or not os.path.exists(file_path):
+        return JsonResponse({'error': 'File does not exist'}, status=404)
+    
+    # Security check: ensure file is inside uploads directory
+    uploads_dir = os.path.abspath('uploads')
+    file_abs_path = os.path.abspath(file_path)
+    
+    if not file_abs_path.startswith(uploads_dir):
+        return JsonResponse({'error': 'Access denied'}, status=404)
+    
+    filename = os.path.basename(file_path)
+    resp = FileResponse(open(file_path, 'rb'), as_attachment=True, filename=filename)
+    resp['Content-Type'] = 'application/octet-stream'
+    resp['X-Content-Type-Options'] = 'nosniff'
+    return resp

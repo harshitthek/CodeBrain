@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}CodeBrain - Test Case Generation{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span style="font-size: 1.2em; color: #d93025; font-style: italic;">Tip: To generate test cases tailored to your business domain, please upload related project documents to the knowledge base first.</span>
+    </div>
+    <div class="card-body">
+        <form id="generate-form" method="post">
+            {% csrf_token %}
+            
+            <div class="form-group mb-3">
+                <label for="llm-provider">Select LLM Provider:</label>
+                <select class="form-control" id="llm-provider" name="llm_provider">
+                    {% for provider_key, provider_config in llm_providers.items %}
+                        <option value="{{ provider_key }}" {% if llm_provider == provider_key %}selected{% endif %}>
+                            {{ provider_config.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label id="input-text-label" for="input-text">Requirement Description:</label>
+                <textarea id="input-text" name="requirements" class="form-control" rows="10" required>{{ requirements }}</textarea>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="case_design_method">Test Case Design Method:</label>
+                    <select class="form-control selectpicker" id="case_design_methods" name="case_design_methods" multiple data-live-search="true">
+                        <option value="equivalence_partitioning">Equivalence Partitioning</option>
+                        <option value="boundary_value">Boundary Value Analysis</option>
+                        <option value="decision_table">Decision Table</option>
+                        <option value="cause_effect">Cause-Effect Graph</option>
+                        <option value="orthogonal_array">Orthogonal Array</option>
+                        <option value="scenario">Scenario Testing</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="case_categories">Test Case Category:</label>
+                    <select class="form-control selectpicker" id="case_categories" name="case_categories" multiple data-live-search="true">
+                        <option value="functional">Functional Testing</option>
+                        <option value="performance">Performance Testing</option>
+                        <option value="compatibility">Compatibility Testing</option>
+                        <option value="security">Security Testing</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="case_count">Case Count:
+                        <i class="fas fa-info-circle text-primary" 
+                            data-toggle="tooltip" 
+                            data-html="true"
+                            data-placement="right"
+                            data-original-title="1. Due to model mechanics, the number of returned cases may vary slightly from requested.<br>2. Larger case counts take longer to generate.">
+                        </i>
+                    </label>
+                    <select class="form-control" id="case_count" name="case_count">
+                        <option value="1">1 case</option>
+                        <option value="10">10 cases</option>
+                        <option value="20">20 cases</option>
+                        <option value="30">30 cases</option>
+                        <option value="40">40 cases</option>
+                        <option value="50">50 cases</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="text-right">
+                <button type="submit" id="generate-button" class="btn btn-primary">Generate Test Cases</button>
+            </div>
+        </form>
+        
+        <div id="loading-indicator" style="display: none;" class="text-center mt-3">
+            <div class="spinner"></div>
+            <p>Generating test cases, please wait...</p>
+        </div>
+    </div>
+</div>
+
+{% if test_cases %}
+<div id="result-container" class="mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Generated Test Cases</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th width="5%">#</th>
+                            <th width="25%">Description</th>
+                            <th width="35%">Test Steps</th>
+                            <th width="35%">Expected Results</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for test_case in test_cases %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ test_case.description }}</td>
+                                <td>
+                                    {% for step in test_case.test_steps %}
+                                        <div class="mb-2">{{ step }}</div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% for result in test_case.expected_results %}
+                                        <div class="mb-2">{{ result }}</div>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ test_cases|json_script:"test-cases-data" }}
+
+<div class="text-right mt-3" id="save-container">
+    <button id="save-button" class="btn btn-success">Save Test Cases</button>
+</div>
+{% endif %}
+
+<style>
+.bootstrap-select .dropdown-menu li a {
+    position: relative;
+    padding-left: 40px !important;
+}
+
+.bootstrap-select .dropdown-menu li a:before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 1px solid #aaa;
+    background: white;
+}
+
+.bootstrap-select .dropdown-menu li.selected a:before {
+    content: '✓';
+    text-align: center;
+    line-height: 14px;
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.bootstrap-select .dropdown-toggle {
+    background-color: white;
+    border: 1px solid #ced4da;
+}
+
+.bootstrap-select .dropdown-toggle:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.filter-option-inner-inner {
+    color: #495057;
+}
+
+/* Search box style */
+.bs-searchbox .form-control {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+
+/* Select all / Deselect all button style */
+.bs-actionsbox {
+    padding: 8px;
+}
+
+.bs-actionsbox .btn-group button {
+    width: 50%;
+}
+
+/* Custom tooltip style */
+.tooltip-inner {
+    max-width: 300px;
+    padding: 10px;
+    color: #fff;
+    text-align: left;
+    background-color: #333;
+    border-radius: 4px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Custom tooltip arrow color */
+.tooltip.bs-tooltip-right .arrow::before {
+    border-right-color: #333;
+}
+</style>
+
+{% block extra_js %}
+<!-- Ensure this code executes after jQuery is loaded -->
+<script type="text/javascript">
+    // Wait for document and resources to load
+    window.addEventListener('load', function() {
+        // Initialize all tooltips
+        if (typeof $ !== 'undefined') {
+            $('[data-toggle="tooltip"]').tooltip();
+            
+            // Initialize selectpicker
+            initializeSelectPickers();
+        } else {
+            console.error('jQuery is not loaded');
+        }
+    });
+
+    function initializeSelectPickers() {
+        $('.selectpicker').selectpicker({
+            style: '',
+            styleBase: 'form-control',
+            tickIcon: '',
+            showTick: false,
+            actionsBox: true,
+            deselectAllText: 'Deselect All',
+            selectAllText: 'Select All',
+            selectedTextFormat: 'count > 2',
+            countSelectedText: '{0} items selected',
+            noneSelectedText: 'Please select'
+        });
+
+        // Custom dropdown option rendering
+        $('.selectpicker').on('loaded.bs.select', function () {
+            var $select = $(this);
+            $select.next().find('.dropdown-menu li a').each(function() {
+                var $a = $(this);
+                var isSelected = $a.parent().hasClass('selected');
+                if (isSelected) {
+                    $a.addClass('selected');
+                }
+            });
+        });
+
+        // Handle selection change
+        $('.selectpicker').on('changed.bs.select', function (e, clickedIndex, isSelected) {
+            var $select = $(this);
+            var $option = $select.next().find('.dropdown-menu li').eq(clickedIndex).find('a');
+            if (isSelected) {
+                $option.addClass('selected');
+            } else {
+                $option.removeClass('selected');
+            }
+        });
+    }
+</script>
+{% endblock %}
+
+<!-- Include generate.js -->
+<script src="{% static 'generate.js' %}"></script>
+{% endblock %} 

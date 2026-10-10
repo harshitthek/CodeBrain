@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}CodeBrain - Knowledge Base Management{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        Add Knowledge Entry
+    </div>
+    <div class="card-body">
+        <form id="add-knowledge-form">
+            <div class="form-group">
+                <label for="knowledge-title">Title:</label>
+                <input type="text" id="knowledge-title" name="title" class="form-control" required data-error-message="Please enter knowledge entry title">
+            </div>
+            
+            <div class="form-group">
+                <label for="knowledge-content">Content:</label>
+                <textarea id="knowledge-content" name="content" class="form-control" rows="10" required data-error-message="Please enter knowledge entry content"></textarea>
+            </div>
+            
+            <div class="text-right">
+                <button type="submit" class="btn btn-primary">Add Knowledge Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header">
+        Knowledge Base Entries
+    </div>
+    <div class="card-body">
+        <div class="form-group">
+            <input type="text" id="knowledge-search" class="form-control" placeholder="Search knowledge base...">
+        </div>
+        
+        <div id="knowledge-list">
+            <div class="text-center">
+                <div class="spinner"></div>
+                <p>Loading knowledge base...</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/knowledge.js' %}"></script>
+{% endblock %} 
