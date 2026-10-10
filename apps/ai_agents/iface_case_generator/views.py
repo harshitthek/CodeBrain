@@ -41,11 +41,12 @@ def iface_case_generator(request):
             logger.info(f"Received file: {uploaded_file.name}")
             
             # Check file type
-            if not uploaded_file.name.lower().endswith('.json'):
+            if not uploaded_file.name.lower().endswith(('.json', '.yaml', '.yml')):
                 return JsonResponse({
                     'success': False,
-                    'error': 'Only JSON format files are supported'
+                    'error': 'Unsupported file format. Please upload a JSON or YAML file (MeterSphere, OpenAPI/Swagger, or Postman).'
                 })
+
             
             try:
                 # Ensure uploads directory exists
@@ -186,8 +187,81 @@ def download_file(request):
     return resp
 
 
+def _normalize_case_to_flat_contract(case: dict, api_defaults: dict = None) -> dict:
+    """Normalize MeterSphere case structure to flat runner/exporter contract."""
+    c = dict(case)
+    api_defaults = api_defaults or {}
+    req = c.setdefault('request', {})
+
+    if not req.get('path'):
+        req['path'] = api_defaults.get('path', '')
+    if not req.get('method'):
+        req['method'] = api_defaults.get('method', 'GET')
+
+    if not c.get('path') and req.get('path'):
+        c['path'] = req['path']
+    if not c.get('method') and req.get('method'):
+        c['method'] = req['method']
+
+    # 1. Normalize body
+    if 'request_body_json' not in c:
+        body_obj = req.get('body')
+        if isinstance(body_obj, dict):
+            json_body = body_obj.get('jsonBody')
+            if isinstance(json_body, dict):
+                raw_val = json_body.get('jsonValue', '')
+                if isinstance(raw_val, str) and raw_val.strip():
+                    try:
+                        c['request_body_json'] = json.loads(raw_val)
+                    except Exception:
+                        c['request_body_json'] = raw_val
+                elif isinstance(raw_val, dict):
+                    c['request_body_json'] = raw_val
+
+    # 2. Normalize query params
+    if 'request_query' not in c and req.get('query'):
+        mapped_q = []
+        for q in req.get('query', []):
+            if isinstance(q, dict):
+                k = q.get('param_name') or q.get('name') or q.get('key')
+                v = q.get('param_value') if q.get('param_value') is not None else q.get('value')
+                if k:
+                    mapped_q.append({'param_name': k, 'param_value': v})
+        c['request_query'] = mapped_q
+
+    # 3. Normalize REST params
+    if 'request_rest' not in c and req.get('rest'):
+        mapped_r = []
+        for r in req.get('rest', []):
+            if isinstance(r, dict):
+                k = r.get('param_name') or r.get('name') or r.get('key')
+                v = r.get('param_value') if r.get('param_value') is not None else r.get('value')
+                if k:
+                    mapped_r.append({'param_name': k, 'param_value': v})
+        c['request_rest'] = mapped_r
+
+    # 4. Flatten assertions from children if not already present
+    if not c.get('assertions'):
+        flat_assertions = []
+        for child in req.get('children', []):
+            if isinstance(child, dict):
+                cfg = child.get('assertionConfig', {})
+                for a in cfg.get('assertions', []):
+                    jpa = a.get('jsonPathAssertion', {})
+                    if jpa.get('assertions'):
+                        flat_assertions.extend(jpa['assertions'])
+                    elif 'expression' in a:
+                        flat_assertions.append(a)
+        if flat_assertions:
+            c['assertions'] = flat_assertions
+            if not c.get('assertion_condition') and flat_assertions[0].get('condition'):
+                c['assertion_condition'] = flat_assertions[0].get('condition')
+
+    return c
+
+
 def _extract_cases_from_payload(data: dict) -> list:
-    """Extract test cases directly from data or from referenced file_path"""
+    """Extract test cases directly from data or from referenced file_path and normalize them."""
     if not isinstance(data, dict):
         raise ValueError("Request payload must be a JSON object")
     cases = data.get('test_cases')
@@ -195,7 +269,7 @@ def _extract_cases_from_payload(data: dict) -> list:
         if not isinstance(cases, list) or not all(isinstance(c, dict) for c in cases):
             raise ValueError("test_cases must be a list of objects")
         if cases:
-            return cases
+            return [_normalize_case_to_flat_contract(c) for c in cases]
     file_path = data.get('file_path')
     if file_path:
         media_root = os.path.realpath(str(settings.MEDIA_ROOT))
@@ -214,12 +288,7 @@ def _extract_cases_from_payload(data: dict) -> list:
                     for case in api.get('apiTestCaseList', []):
                         if not isinstance(case, dict):
                             continue
-                        req = case.setdefault('request', {})
-                        if not req.get('path'):
-                            req['path'] = api.get('path', '')
-                        if not req.get('method'):
-                            req['method'] = api.get('method', 'GET')
-                        extracted.append(case)
+                        extracted.append(_normalize_case_to_flat_contract(case, api_defaults=api))
                 return extracted
             except Exception as e:
                 logger.warning(f"Failed to read test cases from {real_path}: {e}")
@@ -252,7 +321,21 @@ def execute_test_cases(request):
         from .runner import APITestRunner
 
         runner = APITestRunner(base_url=base_url)
+<<<<<<< HEAD
+        if not runner._is_safe_target(base_url):
+            return JsonResponse({'success': False, 'message': 'Target base_url rejected by security policy.'}, status=400)
+
+        MAX_EXECUTION_CASES = 100
+        if len(test_cases) > MAX_EXECUTION_CASES:
+            return JsonResponse({
+                'success': False,
+                'message': f'Submitted test suite exceeds maximum limit of {MAX_EXECUTION_CASES} cases.'
+            }, status=400)
+
+        summary = asyncio.run(runner.execute_suite(test_cases))
+=======
         summary = async_to_sync(runner.execute_suite)(test_cases)
+>>>>>>> origin/main
 
         return JsonResponse({
             'success': True,

@@ -9,15 +9,21 @@ class KnowledgeConfig(AppConfig):
 
     def ready(self):
         from django.conf import settings
-        if getattr(settings, "ENABLE_MILVUS", False):
+        backend = getattr(settings, "VECTOR_STORE_BACKEND", "chroma").lower()
+        if backend == "chroma" or getattr(settings, "ENABLE_MILVUS", False):
             try:
                 from .embedding import create_embedder
-                from .vector_store import MilvusVectorStore
+                from .vector_store import get_vector_store
 
                 if KnowledgeConfig.embedder is None:
-                    KnowledgeConfig.embedder = create_embedder()
+                    try:
+                        KnowledgeConfig.embedder = create_embedder()
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Embedder initialization deferred: {e}")
+
                 if KnowledgeConfig.vector_store is None:
-                    KnowledgeConfig.vector_store = MilvusVectorStore()
+                    KnowledgeConfig.vector_store = get_vector_store()
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"Failed to initialize knowledge base services: {e}")

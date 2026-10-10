@@ -50,15 +50,17 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedFileDiv.textContent = 'Selected file: ' + input.files[0].name;
             
             // Validate file type
-            const fileName = input.files[0].name;
-            if (!fileName.toLowerCase().endsWith('.json')) {
-                statusDiv.textContent = 'Please select a JSON format file';
+            const lowerName = input.files[0].name.toLowerCase();
+            const isValid = lowerName.endsWith('.json') || lowerName.endsWith('.yaml') || lowerName.endsWith('.yml');
+            if (!isValid) {
+                statusDiv.textContent = 'Please select a JSON or YAML format file';
                 statusDiv.style.color = '#dc3545';
                 submitBtn.disabled = true;
             } else {
                 statusDiv.textContent = '';
                 submitBtn.disabled = false;
             }
+
         } else {
             selectedFileDiv.style.display = 'none';
             selectedFileDiv.textContent = '';
@@ -106,12 +108,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Validate file type
-        const fileName = fileInput.files[0].name;
-        if (!fileName.toLowerCase().endsWith('.json')) {
-            statusDiv.textContent = 'Please select a JSON format file';
+        const lowerName = fileInput.files[0].name.toLowerCase();
+        const isValid = lowerName.endsWith('.json') || lowerName.endsWith('.yaml') || lowerName.endsWith('.yml');
+        if (!isValid) {
+            statusDiv.textContent = 'Please select a JSON or YAML format file';
             statusDiv.style.color = '#dc3545';
             return false;
         }
+
 
         submitBtn.disabled = true;
         statusDiv.textContent = 'Uploading file, please wait...';
