@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
-import { ManifestoSection } from './components/ManifestoSection';
-import { InteractiveDemoSection } from './components/InteractiveDemoSection';
-import { TeamSection } from './components/TeamSection';
-import { BlogSection } from './components/BlogSection';
+import { PipelineStudio } from './components/PipelineStudio';
+import { AgentRosterSection } from './components/AgentRosterSection';
+import { APIRunnerSection } from './components/APIRunnerSection';
+import { ArchitectureSection } from './components/ArchitectureSection';
+import { HybridRAGSection } from './components/HybridRAGSection';
 import { Footer } from './components/Footer';
-import { RequestAccessModal } from './components/RequestAccessModal';
 
 export const App: React.FC = () => {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('manifesto');
+  const [activeSection, setActiveSection] = useState('pipeline');
 
   useEffect(() => {
     const handleScroll = () => {
-      const sections = ['manifesto', 'synthesis', 'team', 'blog'];
-      const scrollPosition = window.scrollY + 200;
+      const sections = ['pipeline', 'agents', 'apirunner', 'architecture', 'rag'];
+      const scrollPosition = window.scrollY + 250;
 
       for (const sectionId of sections) {
         const el = document.getElementById(sectionId);
@@ -34,40 +33,44 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const scrollToPipeline = () => {
+    const el = document.getElementById('pipeline');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black text-white relative flex flex-col selection:bg-[#8052ff] selection:text-white">
       {/* Top Navigation */}
       <Navbar
-        onRequestAccess={() => setModalOpen(true)}
+        onLaunchPipeline={scrollToPipeline}
         activeSection={activeSection}
       />
 
       {/* Main Content Sections */}
       <main className="flex-1 w-full">
-        {/* Hero Section with Constellation */}
-        <HeroSection onRequestAccess={() => setModalOpen(true)} />
+        {/* Hero Section with 3D Constellation Brain */}
+        <HeroSection onLaunchPipeline={scrollToPipeline} />
 
-        {/* Section 2: The Manifesto */}
-        <ManifestoSection />
+        {/* Core Interactive Module: Autonomous Actor-Critic Reflection Studio */}
+        <PipelineStudio />
 
-        {/* Section 3: Autonomous Synthesis Demo */}
-        <InteractiveDemoSection onRequestAccess={() => setModalOpen(true)} />
+        {/* Agent Roster Deep Dive */}
+        <AgentRosterSection />
 
-        {/* Section 4: Team Leadership Carousel */}
-        <TeamSection />
+        {/* Closed-Loop Async HTTPX Runner */}
+        <APIRunnerSection />
 
-        {/* Section 5: Perspectives & Blog */}
-        <BlogSection />
+        {/* 4-Layer System Architecture & Invariants */}
+        <ArchitectureSection />
+
+        {/* Zero-Docker Hybrid RAG */}
+        <HybridRAGSection />
       </main>
 
       {/* Footer */}
-      <Footer onRequestAccess={() => setModalOpen(true)} />
-
-      {/* Early Access Modal */}
-      <RequestAccessModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-      />
+      <Footer onLaunchPipeline={scrollToPipeline} />
     </div>
   );
 };

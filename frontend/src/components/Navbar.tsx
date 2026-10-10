@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 
 interface NavbarProps {
-  onRequestAccess: () => void;
+  onLaunchPipeline: () => void;
   activeSection?: string;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onRequestAccess, activeSection = 'manifesto' }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection = 'pipeline' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const scrollTo = (id: string) => {
@@ -17,8 +17,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onRequestAccess, activeSection =
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-none w-full">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-10 h-24 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-black/85 backdrop-blur-md w-full border-b border-white/[0.04]">
+      <div className="max-w-[1280px] mx-auto px-6 md:px-10 h-20 flex items-center justify-between">
         {/* Brand Logo Lockup */}
         <a
           href="#"
@@ -29,64 +29,75 @@ export const Navbar: React.FC<NavbarProps> = ({ onRequestAccess, activeSection =
           className="flex items-center gap-3 group text-decoration-none"
         >
           {/* Triangular brand icon with violet to deep verdant gradient */}
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300 group-hover:scale-110">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300 group-hover:scale-110">
             <defs>
-              <linearGradient id="navLogoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <linearGradient id="codebrainNavGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#8052ff" />
                 <stop offset="100%" stopColor="#15846e" />
               </linearGradient>
             </defs>
-            <polygon points="12,2 22,20 2,20" fill="url(#navLogoGradient)" />
+            <polygon points="12,2 22,20 2,20" fill="url(#codebrainNavGrad)" />
           </svg>
-          <span className="text-white text-[17px] font-normal tracking-[-0.3px] select-none">
-            Dala
-          </span>
+          <div className="flex flex-col">
+            <span className="text-white text-[18px] font-normal tracking-[-0.4px] select-none leading-tight">
+              CodeBrain
+            </span>
+            <span className="text-[#9a9a9a] text-[10px] tracking-[0.08em] uppercase font-mono">
+              Autonomous QA Engine
+            </span>
+          </div>
         </a>
 
         {/* Desktop Nav Items */}
-        <nav className="hidden md:flex items-center gap-10">
+        <nav className="hidden lg:flex items-center gap-8">
           <button
-            onClick={() => scrollTo('manifesto')}
-            className={`ghost-link transition-colors ${activeSection === 'manifesto' ? 'text-white' : 'text-[#9a9a9a]'}`}
+            onClick={() => scrollTo('pipeline')}
+            className={`ghost-link transition-colors ${activeSection === 'pipeline' ? 'text-white' : 'text-[#9a9a9a]'}`}
           >
-            Manifesto
+            Pipeline Studio
           </button>
           <button
-            onClick={() => scrollTo('synthesis')}
-            className={`ghost-link transition-colors ${activeSection === 'synthesis' ? 'text-white' : 'text-[#9a9a9a]'}`}
+            onClick={() => scrollTo('agents')}
+            className={`ghost-link transition-colors ${activeSection === 'agents' ? 'text-white' : 'text-[#9a9a9a]'}`}
           >
-            Intelligence
+            Agent Roster
           </button>
           <button
-            onClick={() => scrollTo('team')}
-            className={`ghost-link transition-colors ${activeSection === 'team' ? 'text-white' : 'text-[#9a9a9a]'}`}
+            onClick={() => scrollTo('apirunner')}
+            className={`ghost-link transition-colors ${activeSection === 'apirunner' ? 'text-white' : 'text-[#9a9a9a]'}`}
           >
-            Team
+            HTTPX Runner
           </button>
           <button
-            onClick={() => scrollTo('blog')}
-            className={`ghost-link transition-colors ${activeSection === 'blog' ? 'text-white' : 'text-[#9a9a9a]'}`}
+            onClick={() => scrollTo('architecture')}
+            className={`ghost-link transition-colors ${activeSection === 'architecture' ? 'text-white' : 'text-[#9a9a9a]'}`}
           >
-            Blog
+            Architecture
+          </button>
+          <button
+            onClick={() => scrollTo('rag')}
+            className={`ghost-link transition-colors ${activeSection === 'rag' ? 'text-white' : 'text-[#9a9a9a]'}`}
+          >
+            Hybrid RAG
           </button>
         </nav>
 
         {/* Right CTA */}
         <div className="flex items-center gap-4">
           <button
-            onClick={onRequestAccess}
+            onClick={onLaunchPipeline}
             className="btn-primary-pill"
           >
-            Request Access
+            Launch Auto-Pilot
           </button>
 
-          {/* Mobile hamburger toggle (clean minimal) */}
+          {/* Mobile hamburger toggle */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-[#9a9a9a] hover:text-white p-2 focus:outline-none"
+            className="lg:hidden text-[#9a9a9a] hover:text-white p-2 focus:outline-none"
             aria-label="Toggle Menu"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               {mobileMenuOpen ? (
                 <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
               ) : (
@@ -99,30 +110,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onRequestAccess, activeSection =
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-black px-6 py-8 flex flex-col gap-6 border-none">
+        <div className="lg:hidden bg-black px-6 py-6 flex flex-col gap-5 border-t border-white/[0.05]">
           <button
-            onClick={() => scrollTo('manifesto')}
-            className="ghost-link text-left text-lg text-white"
+            onClick={() => scrollTo('pipeline')}
+            className="ghost-link text-left text-base text-white"
           >
-            Manifesto
+            Pipeline Studio
           </button>
           <button
-            onClick={() => scrollTo('synthesis')}
-            className="ghost-link text-left text-lg text-white"
+            onClick={() => scrollTo('agents')}
+            className="ghost-link text-left text-base text-white"
           >
-            Intelligence
+            Agent Roster
           </button>
           <button
-            onClick={() => scrollTo('team')}
-            className="ghost-link text-left text-lg text-white"
+            onClick={() => scrollTo('apirunner')}
+            className="ghost-link text-left text-base text-white"
           >
-            Team
+            HTTPX Runner
           </button>
           <button
-            onClick={() => scrollTo('blog')}
-            className="ghost-link text-left text-lg text-white"
+            onClick={() => scrollTo('architecture')}
+            className="ghost-link text-left text-base text-white"
           >
-            Blog
+            Architecture
+          </button>
+          <button
+            onClick={() => scrollTo('rag')}
+            className="ghost-link text-left text-base text-white"
+          >
+            Hybrid RAG
           </button>
         </div>
       )}
