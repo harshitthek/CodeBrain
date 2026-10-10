@@ -1,112 +1,87 @@
-# CodeBrain Memory & Knowledge Architecture
+# CodeBrain Memory, Hybrid RAG & Spec Ingestion Architecture
 
-CodeBrain incorporates a Retrieval-Augmented Generation (RAG) knowledge base subsystem located in `apps/knowledge/`. This subsystem provides long-term context retention, organizational testing memory, and domain specification retrieval across all agents.
+CodeBrain incorporates a zero-Docker Retrieval-Augmented Generation (RAG) knowledge base and API specification ingestion subsystem located in `apps/knowledge/`. It provides long-term context retention, hybrid lexical + semantic search, and structured API contract extraction across all agents.
 
 ---
 
 ## Architecture Overview
 
 ```
-                      ┌─────────────────────────────────┐
-                      │    Document Upload & Intake     │
-                      │   (PDF, DOCX, Markdown, TXT)    │
-                      └────────────────┬────────────────┘
-                                       │
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │        Document Parser          │
-                      │  (Chunking, Normalization, Meta) │
-                      └────────────────┬────────────────┘
-                                       │
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │        Embedding Service        │
-                      │  (BGE-M3 Local or Aliyun Cloud) │
-                      └────────────────┬────────────────┘
-                                       │
-                                       ▼
-                      ┌─────────────────────────────────┐
-                      │       Vector Database Store     │
-                      │        (Milvus 2.4.x / Mock)    │
-                      └────────────────┬────────────────┘
-                                       │
-                     ┌─────────────────┴─────────────────┐
-                     ▼                                   ▼
-          ┌─────────────────────┐             ┌────────────────────┐
-          │ test_case_generator │             │ test_case_reviewer │
-          │ (Context Augmented) │             │ (Rubric Augmented) │
-          └─────────────────────┘             └────────────────────┘
+      ┌───────────────────────────────────┐   ┌───────────────────────────────────┐
+      │     Document Upload & Intake      │   │     API Specification Intake      │
+      │    (PDF, DOCX, Markdown, TXT)     │   │  (OpenAPI 3.x, Swagger, Postman)  │
+      └─────────────────┬─────────────────┘   └─────────────────┬─────────────────┘
+                        │                                       │
+                        ▼                                       ▼
+      ┌───────────────────────────────────┐   ┌───────────────────────────────────┐
+      │     Chunking & Normalization      │   │  openapi_parser / postman_parser  │
+      └─────────────────┬─────────────────┘   └─────────────────┬─────────────────┘
+                        │                                       │
+         ┌──────────────┴──────────────┐                        │
+         ▼                             ▼                        ▼
+┌─────────────────────┐     ┌─────────────────────┐   ┌───────────────────────────┐
+│  Dense Vector Store │     │   Lexical Index     │   │ Normalized API Contracts  │
+│  - SQLite/ChromaDB  │     │  - PureBM25Index    │   │ (Endpoints, Params, Body) │
+│  - Milvus (Cluster) │     │    (Okapi BM25)     │   └─────────────┬─────────────┘
+└──────────┬──────────┘     └──────────┬──────────┘                 │
+           │                           │                            │
+           └─────────────┬─────────────┘                            │
+                         ▼                                          │
+           ┌───────────────────────────┐                            │
+           │     HybridRetriever       │                            │
+           │ (Reciprocal Rank Fusion)  │                            │
+           └─────────────┬─────────────┘                            │
+                         │                                          │
+                         ▼                                          ▼
+           ┌──────────────────────────────────────────────────────────┐
+           │   Agent Context Augmentation & Test Suite Generation     │
+           └──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 1. Vector Database Layer (`MilvusVectorStore`)
+## 1. Zero-Docker Embedded Vector Store (`chroma_store.py`)
 
-The primary vector store implementation lives in `apps/knowledge/vector_store.py` and `apps/knowledge/milvus_helper.py`.
+To run locally without requiring external Milvus/Docker containers, CodeBrain provides [`PersistentSQLiteVectorStore`](apps/knowledge/chroma_store.py) in `apps/knowledge/chroma_store.py`:
 
-### Collection Schema
-- **Collection Name**: Configurable via `VECTOR_DB_CONFIG['collection_name']` (default: `vv_knowledge_collection`).
-- **Primary Key**: `id` (`INT64`, auto-generated or document ID).
-- **Vector Field**: `embedding` (`FLOAT_VECTOR`, dimension matches embedding model).
-- **Metadata Fields**:
-  - `doc_id` (`VARCHAR`): Unique identifier of parent document.
-  - `doc_name` (`VARCHAR`): File name or title.
-  - `chunk_id` (`INT64`): Sequential index of chunk within parent document.
-  - `text` (`VARCHAR`): Raw text chunk content.
-  - `category` (`VARCHAR`): Functional category (e.g., requirement, past defect, interface spec).
-  - `timestamp` (`INT64`): Ingestion timestamp.
-
-### Indexing and Search Metrics
-- **Metric Type**: `L2` (Euclidean distance) or `COSINE`.
-- **Index Type**: `IVF_FLAT` (low resource overhead) or `HNSW` (high recall, high throughput).
-- **Query Strategy**: Top-K retrieval with minimum similarity threshold filtering.
+- **Storage Engine**: Embedded SQLite table (`vector_chunks`) stored at `chroma_db/chroma_vectors.sqlite3` (or optional native `chromadb.PersistentClient`).
+- **Deterministic Local Embeddings**: Computes normalized 384-dimensional dense token/n-gram feature embeddings out-of-the-box when heavy PyTorch models are offline, or integrates with `EmbeddingService`.
+- **Cosine Similarity Search**: Evaluates exact cosine similarity over persisted vectors with category and metadata filtering.
+- **CRUD Operations**: Supports `add_documents`, `search`, `delete_by_doc_id`, `count`, and `clear`.
 
 ---
 
-## 2. Embedding Subsystem (`EmbeddingService`)
+## 2. Hybrid BM25 + Vector Retrieval (`hybrid_retriever.py`)
 
-The embedding engine is abstracted under `apps/knowledge/embedding.py` and supports two operational modes:
+[`HybridRetriever`](apps/knowledge/hybrid_retriever.py) in `apps/knowledge/hybrid_retriever.py` combines dense semantic search with exact keyword matching:
 
-### Local Mode (`local`)
-- **Model**: `BAAI/bge-m3` via `sentence-transformers`.
-- **Vector Dimension**: 1024.
-- **Strengths**: Zero cloud egress, offline execution, native multilingual support (English, Chinese, code tokens).
-- **Initialization**: Loaded into memory via PyTorch with lazy initialization.
-
-### Cloud Mode (`aliyun`)
-- **Model**: `text-embedding-v4` via DashScope REST API.
-- **Vector Dimension**: Configurable (e.g. 1536 / 1024).
-- **Strengths**: Minimal memory footprint, suited for low-resource server environments.
-
-### Provider Configuration
-Controlled via environment variable:
-```bash
-# Toggle between 'local' and 'aliyun'
-export EMBEDDING_PROVIDER="aliyun"
-export DASHSCOPE_API_KEY="your-api-key"
-```
+- **Lexical Engine (`PureBM25Index`)**: Zero-dependency Okapi BM25 implementation (`k1=1.5`, `b=0.75`) with CJK character and alphanumeric token segmentation. Ensures exact matches on API paths (e.g. `/api/v1/orders`), error codes, and parameter names.
+- **Reciprocal Rank Fusion (RRF)**: Merges dense vector rankings and BM25 lexical rankings using weighted RRF:
+  $$\text{RRF\_Score}(d) = \frac{w_{\text{dense}}}{k + \text{rank}_{\text{dense}}(d)} + \frac{w_{\text{bm25}}}{k + \text{rank}_{\text{bm25}}(d)}$$
+  where $k = 60$ by default.
 
 ---
 
-## 3. Ingestion & Retrieval Workflow
+## 3. API Specification Ingestion (`openapi_parser.py` & `postman_parser.py`)
 
-### Document Parsing & Chunking
-1. Document upload handled via `apps/core/views.py` (`knowledge_upload`).
-2. Parsers break incoming documents into chunks of 300 to 800 tokens with an overlap of 50 to 100 tokens.
-3. Metadata is generated and associated with each chunk before vectorization.
+CodeBrain ingests structured API definitions directly into the Knowledge Base and Interface Case Generator:
 
-### Context Retrieval Pipeline
-1. When an agent receives a prompt, it queries `KnowledgeService.search(query, top_k=5)`.
-2. The query text is vectorized using the active embedding model.
-3. Milvus executes vector similarity search against the collection.
-4. Matching text chunks are formatted as context blocks and injected into agent prompts under a `# Reference Knowledge` section.
+- **OpenAPI 3.x & Swagger 2.0 Parser ([`openapi_parser.py`](apps/knowledge/openapi_parser.py))**:
+  - Parses JSON and YAML specifications.
+  - Resolves internal `$ref` pointers (`#/components/schemas/...` and `#/definitions/...`) with cycle detection to prevent infinite recursion on self-referential schemas.
+  - Synthesizes sample request bodies, query parameters, path variables, and header contracts.
+- **Postman Collection v2.1 Parser ([`postman_parser.py`](apps/knowledge/postman_parser.py))**:
+  - Recursively traverses nested Postman folder hierarchies (`item` trees), preserving folder breadcrumb paths.
+  - Extracts URL templates, query parameters, headers, and raw/form-data request bodies.
+- **Auto-Detection Facade**: `parse_api_definitions` in [`apps/knowledge/service.py`](apps/knowledge/service.py) automatically detects OpenAPI/Swagger vs. Postman schemas and converts endpoints into CodeBrain's internal `apiDefinitions` structure.
 
 ---
 
-## 4. Graceful Degradation & Non-Docker Mode
+## 4. Enterprise Cluster Mode (`MilvusVectorStore` & `EmbeddingService`)
 
-To permit local development and testing without spinning up Milvus containers:
+For multi-million-vector production deployments, CodeBrain supports external Milvus clusters (`apps/knowledge/vector_store.py`) and cloud/local neural embeddings (`apps/knowledge/embedding.py`):
 
-1. **`ENABLE_MILVUS = False`**: Setting this flag in `config/settings.py` prevents connection attempts to Milvus host.
-2. **Lazy NLP Loading**: Heavy dependencies (`sentence_transformers`, `spacy`, `unstructured`) are imported inside their respective caller functions rather than module root, avoiding startup crashes when dependencies or GPU environments are absent.
-3. **Fallback Search**: When Milvus is inactive, `KnowledgeService` returns an empty context set without throwing exceptions, allowing agents to function in zero-context standalone mode.
+- **Enable Milvus**: Set `ENABLE_MILVUS = True` in `config/settings.py`. When `ENABLE_MILVUS = False` (default), `KnowledgeService` automatically routes all storage and hybrid retrieval through the embedded zero-Docker store.
+- **Embedding Providers**:
+  - `local`: `BAAI/bge-m3` via `sentence-transformers` (1024-dim).
+  - `aliyun`: `text-embedding-v4` via DashScope REST API.
