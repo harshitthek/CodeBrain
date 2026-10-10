@@ -106,7 +106,7 @@ def case_review(request):
         
         # Persist review record in database
         try:
-            reviewer_user = request.user if request.user.is_authenticated else None
+            reviewer_user = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
             TestCaseReview.objects.create(
                 test_case=test_case,
                 reviewer=reviewer_user,
@@ -115,9 +115,16 @@ def case_review(request):
             logger.info(f"Saved TestCaseReview record for TestCase id={test_case.id}")
         except Exception as save_err:
             logger.warning(f"Failed to persist review record: {str(save_err)}")
+            return JsonResponse({
+                'success': False,
+                'saved': False,
+                'review_result': review_content,
+                'message': f'Failed to persist review record: {str(save_err)}'
+            }, status=500)
 
         return JsonResponse({
             'success': True,
+            'saved': True,
             'review_result': review_content
         })
         
@@ -161,7 +168,7 @@ def get_test_cases(request, test_case_ids: str):
         ids = test_case_ids.split(',')
         test_cases = TestCase.objects.filter(id__in=ids).values(
             'id', 'title', 'description', 'test_steps', 
-            'expected_results', 'status', 'requirements', 'llm_provider', 'priority'
+            'expected_results', 'status', 'priority', 'requirements', 'llm_provider'
         )
         return JsonResponse({
             'success': True,
@@ -210,6 +217,13 @@ def copy_test_cases(request):
         return JsonResponse({'error': 'Test cases do not exist'}, status=404)
 
 
+def _sanitize_cell_value(val):
+    """Neutralize formula-like prefixes to prevent spreadsheet formula injection."""
+    if isinstance(val, str) and val and val[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return f"'{val}"
+    return val
+
+
 def export_test_cases_excel(request):
     """Export test cases to modern Excel (.xlsx) file using openpyxl"""
     try:
@@ -217,6 +231,11 @@ def export_test_cases_excel(request):
         import openpyxl
         from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
         from openpyxl.utils import get_column_letter
+
+        if getattr(settings, 'REQUIRE_EXPORT_AUTH', True):
+            user = getattr(request, 'user', None)
+            if not user or not user.is_authenticated or not user.has_perm('core.view_testcase'):
+                return JsonResponse({'success': False, 'message': 'Authentication and export permission required'}, status=403)
 
         ids = request.GET.get('ids')
         if not ids or ids.strip() == 'all':
@@ -229,7 +248,7 @@ def export_test_cases_excel(request):
                     'test_steps': tc.test_steps,
                     'expected_results': tc.expected_results,
                     'status': tc.status,
-                    'priority': tc.priority or 'P2'
+                    'priority': (tc.priority or 'P2').upper()
                 }
                 for tc in test_cases_qs
             ]
@@ -244,7 +263,7 @@ def export_test_cases_excel(request):
                     'test_steps': tc.test_steps,
                     'expected_results': tc.expected_results,
                     'status': tc.status,
-                    'priority': tc.priority or 'P2'
+                    'priority': (tc.priority or 'P2').upper()
                 }
                 for tc in test_cases_qs
             ]
@@ -277,19 +296,27 @@ def export_test_cases_excel(request):
             cell.alignment = alignment_center
             cell.border = thin_border
 
+        def _sanitize_excel_text(val):
+            s = str(val if val is not None else "")
+            if s.startswith("="):
+                return f"'{s}"
+            return s
+
         for idx, tc in enumerate(test_cases, start=1):
             row_num = idx + 1
             ws.append([
                 idx,
                 tc.get('id', ''),
-                tc.get('description', ''),
-                tc.get('test_steps', ''),
-                tc.get('expected_results', ''),
+                _sanitize_excel_text(tc.get('description', '')),
+                _sanitize_excel_text(tc.get('test_steps', '')),
+                _sanitize_excel_text(tc.get('expected_results', '')),
                 tc.get('status', ''),
-                tc.get('priority', 'P2')
+                tc.get('priority') or 'P2'
             ])
             for col_num in range(1, len(headers) + 1):
                 cell = ws.cell(row=row_num, column=col_num)
+                if col_num in [3, 4, 5]:
+                    cell.data_type = 's'
                 cell.border = thin_border
                 if col_num in [1, 2, 6, 7]:
                     cell.alignment = alignment_center

@@ -80,14 +80,24 @@ SAMPLE_TEST_CASES = [
 class TestPhase2Suite:
 
     def test_ssrf_safety_checks(self):
-        """Runner must reject cloud metadata IP and invalid schemes."""
+        """Runner must reject cloud metadata IP, private/loopback by default, invalid schemes, and unresolvable hosts."""
         runner = APITestRunner(base_url="http://169.254.169.254")
         assert runner._is_safe_target("http://169.254.169.254/latest/meta-data/") is False
         assert runner._is_safe_target_url("http://169.254.169.254/api") is False
+        assert runner._is_safe_target("http://127.0.0.1:8000/api") is False
+
+        local_runner = APITestRunner(base_url="http://127.0.0.1:8000", allow_private=True)
+        assert local_runner._is_safe_target("http://127.0.0.1:8000/api") is True
 
         safe_runner = APITestRunner(base_url="https://api.example.com")
-        assert safe_runner._is_safe_target("https://api.example.com/api/test") is True
+        with patch("socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.215.14", 443))]):
+            assert safe_runner._is_safe_target("https://api.example.com/api/test") is True
         assert safe_runner._is_safe_target("ftp://api.example.com/api/test") is False
+
+        import socket as _socket
+        with patch("socket.getaddrinfo", side_effect=_socket.gaierror("NXDOMAIN")):
+            assert safe_runner._is_safe_target("https://unresolvable.invalid/api/test") is False
+
 
     def test_assertion_evaluator_operators(self):
         """Runner evaluates operators correctly."""
@@ -136,7 +146,7 @@ class TestPhase2Suite:
 
     def test_execute_suite_with_mock_client(self):
         """Execute suite returns structured summary metrics and assertions."""
-        runner = APITestRunner(base_url="http://127.0.0.1:8000")
+        runner = APITestRunner(base_url="http://127.0.0.1:8000", allow_private=True)
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -280,3 +290,41 @@ class TestPhase2Suite:
         assert resp_postman["Content-Type"] == "application/json"
         parsed = json.loads(resp_postman.content.decode("utf-8"))
         assert "item" in parsed
+
+    def test_request_body_envelope_unwrapping(self):
+        """Runner, Pytest exporter, and Postman exporter unwrap jsonBody.jsonValue and raw envelopes."""
+        envelope_cases = [
+            {
+                "name": "Envelope JSON Value",
+                "request": {
+                    "method": "POST",
+                    "path": "/api/v1/orders",
+                    "body": {
+                        "bodyType": "JSON",
+                        "jsonBody": {"jsonValue": '{"item_id": 99, "qty": 2}'}
+                    }
+                },
+                "assertions": [{"expression": "code", "condition": "EQUALS", "expectedValue": 201}]
+            }
+        ]
+        # 1. Postman exporter unwraps envelope into raw JSON
+        postman_col = generate_postman_collection(envelope_cases, base_url="http://127.0.0.1:8000")
+        raw_body = json.loads(postman_col["item"][0]["request"]["body"]["raw"])
+        assert raw_body == {"item_id": 99, "qty": 2}
+
+        # 2. Pytest exporter unwraps envelope into dict literal
+        pytest_code = generate_pytest_script(envelope_cases, base_url="http://127.0.0.1:8000")
+        assert "'item_id': 99" in pytest_code
+
+        # 3. Runner sends unwrapped dict as json payload
+        runner = APITestRunner(base_url="http://127.0.0.1:8000", allow_private=True)
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.headers = {"Content-Type": "application/json"}
+        mock_response.json.return_value = {"code": 201}
+        with patch("httpx.AsyncClient.request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_response
+            asyncio.run(runner.execute_suite(envelope_cases))
+            _, kwargs = mock_req.call_args
+            assert kwargs["json"] == {"item_id": 99, "qty": 2}
+

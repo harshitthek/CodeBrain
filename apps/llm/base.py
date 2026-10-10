@@ -131,9 +131,9 @@ class LLMServiceFactory:
         # Remove metadata not accepted by ChatOpenAI
         final_config.pop('name', None)
         
-        # Log final configuration (redacting secret keys)
-        safe_log_config = {k: ('***' if k == 'api_key' else v) for k, v in final_config.items()}
-        logger.info(f"Final config for {provider}: {safe_log_config}")
+        # Log final configuration with masked credentials
+        safe_config = {k: ('***' if 'key' in k.lower() or 'secret' in k.lower() else v) for k, v in final_config.items()}
+        logger.info(f"Final config for {provider}: {safe_config}")
         
         # Create corresponding service instance according to provider
         if provider.lower() == "deepseek":

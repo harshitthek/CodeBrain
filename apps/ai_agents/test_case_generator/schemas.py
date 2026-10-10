@@ -17,7 +17,16 @@ class GeneratedTestCaseItem(BaseModel):
     @classmethod
     def validate_description(cls, v: Any) -> str:
         if not v or not str(v).strip():
-            return "Test Case Scenario"
+            raise ValueError("description must not be empty")
+        return str(v).strip()
+
+    @field_validator("preconditions", mode="before")
+    @classmethod
+    def validate_preconditions(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        if isinstance(v, list):
+            return "\n".join(str(item).strip() for item in v if str(item).strip())
         return str(v).strip()
 
     @field_validator("test_steps", mode="before")
@@ -25,22 +34,30 @@ class GeneratedTestCaseItem(BaseModel):
     def validate_test_steps(cls, v: Any) -> List[str]:
         if isinstance(v, list):
             cleaned = [str(step).strip() for step in v if str(step).strip()]
-            return cleaned if cleaned else ["Perform verification action"]
+            if not cleaned:
+                raise ValueError("test_steps must not be empty")
+            return cleaned
         if isinstance(v, str) and v.strip():
             lines = [line.strip() for line in v.split("\n") if line.strip()]
-            return lines if lines else ["Perform verification action"]
-        return ["Perform verification action"]
+            if not lines:
+                raise ValueError("test_steps must not be empty")
+            return lines
+        raise ValueError("test_steps must not be empty")
 
     @field_validator("expected_results", mode="before")
     @classmethod
     def validate_expected_results(cls, v: Any) -> List[str]:
         if isinstance(v, list):
             cleaned = [str(item).strip() for item in v if str(item).strip()]
-            return cleaned if cleaned else ["Action executes successfully as expected"]
+            if not cleaned:
+                raise ValueError("expected_results must not be empty")
+            return cleaned
         if isinstance(v, str) and v.strip():
             lines = [line.strip() for line in v.split("\n") if line.strip()]
-            return lines if lines else ["Action executes successfully as expected"]
-        return ["Action executes successfully as expected"]
+            if not lines:
+                raise ValueError("expected_results must not be empty")
+            return lines
+        raise ValueError("expected_results must not be empty")
 
 
 def extract_and_parse_test_cases(response_text: str) -> List[Dict[str, Any]]:
@@ -75,24 +92,30 @@ def extract_and_parse_test_cases(response_text: str) -> List[Dict[str, Any]]:
 
     # Strategy 3: Greedy bracket extraction [...]
     if raw_json_obj is None:
-        start_idx = cleaned_text.find("[")
         end_idx = cleaned_text.rfind("]")
-        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
-            substring = cleaned_text[start_idx : end_idx + 1]
-            try:
-                raw_json_obj = json.loads(substring)
-            except Exception:
-                # Try json5 or trailing comma repair
+        if end_idx != -1:
+            search_start = 0
+            while True:
+                start_idx = cleaned_text.find("[", search_start)
+                if start_idx == -1 or start_idx >= end_idx:
+                    break
+                substring = cleaned_text[start_idx : end_idx + 1]
                 try:
-                    import json5  # type: ignore
-                    raw_json_obj = json5.loads(substring)
+                    raw_json_obj = json.loads(substring)
+                    break
                 except Exception:
-                    # Basic trailing comma regex cleanup
-                    fixed = re.sub(r",\s*([\]}])", r"\1", substring)
                     try:
-                        raw_json_obj = json.loads(fixed)
+                        import json5  # type: ignore
+                        raw_json_obj = json5.loads(substring)
+                        break
                     except Exception:
-                        pass
+                        fixed = re.sub(r",\s*([\]}])", r"\1", substring)
+                        try:
+                            raw_json_obj = json.loads(fixed)
+                            break
+                        except Exception:
+                            pass
+                search_start = start_idx + 1
 
     # Strategy 4: Dictionary wrapping (e.g. {"test_cases": [...]})
     if isinstance(raw_json_obj, dict):

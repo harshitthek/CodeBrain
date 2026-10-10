@@ -1,5 +1,6 @@
 import os
 import json
+import tempfile
 from django.http import JsonResponse
 from apps.utils.logger_manager import get_logger
 from apps.ai_agents.prd_analyzer.analyser import PrdAnalyserAgent
@@ -23,9 +24,6 @@ logger = get_logger(__name__)
 def extract_content_from_file(uploaded_file, file_type: str) -> str:
     """Extract plain text / markdown from uploaded document."""
     file_type = file_type.lower()
-    save_dir = os.path.join(settings.BASE_DIR, 'prd')
-    os.makedirs(save_dir, exist_ok=True)
-    temp_path = os.path.join(save_dir, uploaded_file.name)
 
     if file_type in ['.md', '.txt']:
         raw_bytes = uploaded_file.read()
@@ -48,13 +46,27 @@ def extract_content_from_file(uploaded_file, file_type: str) -> str:
             raise ValueError(f"Could not extract text from PDF: {str(e)}")
 
     elif file_type == '.docx':
-        with open(temp_path, 'wb+') as f:
-            for chunk in uploaded_file.chunks():
-                f.write(chunk)
-        md_path = temp_path.replace('.docx', '.md')
-        word_to_markdown(temp_path, md_path)
-        with open(md_path, 'r', encoding='utf-8') as f:
-            return f.read()
+        save_dir = os.path.join(settings.BASE_DIR, 'prd')
+        os.makedirs(save_dir, exist_ok=True)
+        orig_suffix = os.path.splitext(uploaded_file.name)[1] or '.docx'
+        fd, temp_path = tempfile.mkstemp(suffix=orig_suffix, dir=save_dir)
+        os.close(fd)
+        stem, _ = os.path.splitext(temp_path)
+        md_path = f"{stem}.md"
+        try:
+            with open(temp_path, 'wb+') as f:
+                for chunk in uploaded_file.chunks():
+                    f.write(chunk)
+            word_to_markdown(temp_path, md_path)
+            with open(md_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        finally:
+            for p in (temp_path, md_path):
+                if os.path.exists(p):
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
 
     else:
         raise ValueError(f"Unsupported file format '{file_type}'. Supported: .docx, .md, .txt, .pdf")
@@ -67,16 +79,40 @@ def prd_analyzer(request):
     elif request.method == 'POST':
         prd_content = ""
 
-        # Check for raw text submission (direct paste)
-        raw_text = request.POST.get('raw_text', '').strip()
-        if not raw_text and request.content_type == 'application/json':
+        raw_text = ""
+        input_mode = ""
+        content_type = (request.content_type or '').lower()
+        if content_type.startswith('application/json'):
             try:
                 body_data = json.loads(request.body)
-                raw_text = body_data.get('raw_text', '').strip()
+                if isinstance(body_data, dict):
+                    raw_text = str(body_data.get('raw_text', '')).strip()
+                    input_mode = str(body_data.get('input_mode', '')).strip().lower()
             except Exception:
                 pass
+        else:
+            raw_text = request.POST.get('raw_text', '').strip()
+            input_mode = request.POST.get('input_mode', '').strip().lower()
 
-        if raw_text:
+        if input_mode == 'upload':
+            if 'single_file' in request.FILES:
+                uploaded_file = request.FILES['single_file']
+                file_type = os.path.splitext(uploaded_file.name)[1].lower()
+                logger.info(f"Processing uploaded file: {uploaded_file.name} ({file_type})")
+                try:
+                    prd_content = extract_content_from_file(uploaded_file, file_type)
+                except Exception as e:
+                    logger.error(f"Error parsing uploaded file: {str(e)}")
+                    return JsonResponse({'success': False, 'error': str(e)}, status=400)
+            else:
+                return JsonResponse({'success': False, 'error': 'No file uploaded'}, status=400)
+        elif input_mode == 'paste':
+            if raw_text:
+                prd_content = raw_text
+                logger.info(f"Received raw text PRD input of {len(prd_content)} characters")
+            else:
+                return JsonResponse({'success': False, 'error': 'No text content provided'}, status=400)
+        elif raw_text:
             prd_content = raw_text
             logger.info(f"Received raw text PRD input of {len(prd_content)} characters")
         elif 'single_file' in request.FILES:
