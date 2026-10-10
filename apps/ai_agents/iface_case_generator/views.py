@@ -184,3 +184,116 @@ def download_file(request):
     resp['Content-Type'] = 'application/octet-stream'
     resp['X-Content-Type-Options'] = 'nosniff'
     return resp
+
+
+def _extract_cases_from_payload(data: dict) -> list:
+    """Extract test cases directly from data or from referenced file_path"""
+    cases = data.get('test_cases', [])
+    if cases:
+        return cases
+    file_path = data.get('file_path')
+    if file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = json.load(f)
+            extracted = []
+            for api in content.get('apiDefinitions', []):
+                for case in api.get('apiTestCaseList', []):
+                    req = case.setdefault('request', {})
+                    if not req.get('path'):
+                        req['path'] = api.get('path', '')
+                    if not req.get('method'):
+                        req['method'] = api.get('method', 'GET')
+                    extracted.append(case)
+            return extracted
+        except Exception as e:
+            logger.warning(f"Failed to read test cases from {file_path}: {e}")
+    return []
+
+
+def execute_test_cases(request):
+    """Execute API test cases asynchronously against a target base URL"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        base_url = data.get('base_url', '').strip()
+        test_cases = _extract_cases_from_payload(data)
+
+        if not base_url:
+            return JsonResponse({'success': False, 'message': 'Target base_url is required'}, status=400)
+        if not test_cases:
+            return JsonResponse({'success': False, 'message': 'No test cases found for execution'}, status=400)
+
+        import asyncio
+        from .runner import APITestRunner
+
+        runner = APITestRunner(base_url=base_url)
+        summary = asyncio.run(runner.execute_suite(test_cases))
+
+        return JsonResponse({
+            'success': True,
+            'summary': summary
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON in request body'}, status=400)
+    except Exception as e:
+        logger.error(f"Error executing test suite: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': f"Execution error: {str(e)}"}, status=500)
+
+
+def export_pytest_view(request):
+    """Export test cases to standalone executable Pytest script"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+    try:
+        from django.http import HttpResponse
+        from .exporters import generate_pytest_script
+
+        data = json.loads(request.body)
+        base_url = data.get('base_url', 'http://127.0.0.1:8000')
+        test_cases = _extract_cases_from_payload(data)
+
+        if not test_cases:
+            return JsonResponse({'success': False, 'message': 'No test cases found to export'}, status=400)
+
+        script_code = generate_pytest_script(test_cases, base_url=base_url)
+
+        response = HttpResponse(script_code, content_type='text/x-python')
+        response['Content-Disposition'] = 'attachment; filename="test_api_generated.py"'
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to export Pytest script: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+def export_postman_view(request):
+    """Export test cases to Postman Collection v2.1.0 JSON"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
+    try:
+        from django.http import HttpResponse
+        from .exporters import generate_postman_collection
+
+        data = json.loads(request.body)
+        base_url = data.get('base_url', 'http://127.0.0.1:8000')
+        test_cases = _extract_cases_from_payload(data)
+
+        if not test_cases:
+            return JsonResponse({'success': False, 'message': 'No test cases found to export'}, status=400)
+
+        collection = generate_postman_collection(test_cases, base_url=base_url)
+        content = json.dumps(collection, ensure_ascii=False, indent=2)
+
+        response = HttpResponse(content, content_type='application/json')
+        response['Content-Disposition'] = 'attachment; filename="codebrain_postman_collection.json"'
+        return response
+
+    except Exception as e:
+        logger.error(f"Failed to export Postman collection: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

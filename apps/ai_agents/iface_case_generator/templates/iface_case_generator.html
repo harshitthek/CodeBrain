@@ -169,11 +169,107 @@
 </div>
 
 <!-- Result Section -->
-<div id="generation-result" style="display: none;">
-    <h3>API Test Case Generation Completed</h3>
-    <div id="result-message"></div>
-    <a id="download-link" href="#" class="btn btn-success">Download Updated File</a>
+<div id="generation-result" style="display: none;" class="card p-4 mt-3">
+    <h3 class="text-success"><i class="fas fa-check-circle"></i> API Test Case Generation Completed</h3>
+    <div id="result-message" class="alert alert-info my-3"></div>
+    <div class="d-flex gap-2 mb-4">
+        <a id="download-link" href="#" class="btn btn-success"><i class="fas fa-download"></i> Download Updated JSON File</a>
+    </div>
+
+    <!-- Closed-Loop Execution & Export Panel -->
+    <div class="card mt-3 border-primary">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-play-circle"></i> Closed-Loop API Runner & Exporters</h5>
+            <span class="badge badge-light text-dark">Phase 2</span>
+        </div>
+        <div class="card-body">
+            <div class="form-group mb-3">
+                <label for="target-base-url" class="font-weight-bold">Target Base URL for Live Execution:</label>
+                <div class="input-group">
+                    <input type="text" id="target-base-url" class="form-control" value="http://127.0.0.1:8000" placeholder="http://127.0.0.1:8000">
+                    <div class="input-group-append">
+                        <button class="btn btn-danger" type="button" id="executeSuiteBtn">
+                            <i class="fas fa-rocket"></i> Execute Test Suite
+                        </button>
+                    </div>
+                </div>
+                <small class="form-text text-muted">Runs generated API requests asynchronously against the target endpoint and validates JSONPath assertions.</small>
+            </div>
+
+            <div class="d-flex gap-2 mb-3">
+                <button type="button" class="btn btn-outline-primary" id="exportPytestBtn">
+                    <i class="fas fa-file-code"></i> Export Pytest Script (.py)
+                </button>
+                <button type="button" class="btn btn-outline-secondary ml-2" id="exportPostmanBtn">
+                    <i class="fas fa-share-square"></i> Export Postman Collection (.json)
+                </button>
+            </div>
+
+            <!-- Execution Status Spinner -->
+            <div id="execution-spinner" style="display: none;" class="text-center my-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="sr-only">Executing test suite...</span>
+                </div>
+                <p class="mt-2 text-primary font-weight-bold">Executing test suite against target endpoint...</p>
+            </div>
+
+            <!-- Live Execution Results Container -->
+            <div id="execution-results-card" style="display: none;" class="mt-4">
+                <div class="row text-center mb-3">
+                    <div class="col-md-2">
+                        <div class="card bg-light p-2">
+                            <h6 class="text-muted mb-0">Total Run</h6>
+                            <h3 id="stat-total" class="font-weight-bold mb-0">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card bg-success text-white p-2">
+                            <h6 class="mb-0">Passed</h6>
+                            <h3 id="stat-passed" class="font-weight-bold mb-0">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card bg-danger text-white p-2">
+                            <h6 class="mb-0">Failed</h6>
+                            <h3 id="stat-failed" class="font-weight-bold mb-0">0</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white p-2">
+                            <h6 class="mb-0">Pass Rate</h6>
+                            <h3 id="stat-rate" class="font-weight-bold mb-0">0%</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-secondary text-white p-2">
+                            <h6 class="mb-0">Total Time</h6>
+                            <h3 id="stat-time" class="font-weight-bold mb-0">0s</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive mt-3">
+                    <table class="table table-bordered table-hover" id="execution-results-table">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th style="width: 80px;">Status</th>
+                                <th style="width: 90px;">Method</th>
+                                <th>Endpoint & Test Case</th>
+                                <th style="width: 100px;">HTTP Code</th>
+                                <th style="width: 110px;">Latency</th>
+                                <th style="width: 110px;">Assertions</th>
+                                <th style="width: 90px;">Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="execution-results-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 
 <!-- Live logs area -->
 <div id="live-logs" style="margin-top: 16px; height: 620px; border: 2px solid #28a745; border-radius: 4px; padding: 8px; overflow: auto; background: #000000; color: #ffffff; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 12px; line-height: 1.5; display: none;"></div>
