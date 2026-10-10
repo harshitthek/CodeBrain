@@ -321,10 +321,6 @@ def execute_test_cases(request):
         from .runner import APITestRunner
 
         runner = APITestRunner(base_url=base_url)
-<<<<<<< HEAD
-        if not runner._is_safe_target(base_url):
-            return JsonResponse({'success': False, 'message': 'Target base_url rejected by security policy.'}, status=400)
-
         MAX_EXECUTION_CASES = 100
         if len(test_cases) > MAX_EXECUTION_CASES:
             return JsonResponse({
@@ -332,10 +328,7 @@ def execute_test_cases(request):
                 'message': f'Submitted test suite exceeds maximum limit of {MAX_EXECUTION_CASES} cases.'
             }, status=400)
 
-        summary = asyncio.run(runner.execute_suite(test_cases))
-=======
         summary = async_to_sync(runner.execute_suite)(test_cases)
->>>>>>> origin/main
 
         return JsonResponse({
             'success': True,
