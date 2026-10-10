@@ -1,5 +1,34 @@
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+
+
+def _resolve_body(case: Dict[str, Any], req_info: Optional[Dict[str, Any]] = None) -> Any:
+    """Unwrap request body envelopes (e.g. MeterSphere bodyType/jsonBody/raw) and parse JSON strings."""
+    if req_info is None:
+        req_info = case.get('request') or {}
+
+    def _unwrap(val: Any) -> Any:
+        if isinstance(val, dict) and 'bodyType' in val:
+            json_body_node = val.get('jsonBody')
+            if isinstance(json_body_node, dict) and json_body_node.get('jsonValue') is not None:
+                return json_body_node.get('jsonValue')
+            if isinstance(val.get('raw'), str):
+                return val.get('raw')
+            return None
+        return val
+
+    cand_body = _unwrap(req_info.get('body'))
+    body = case.get('request_body_json')
+    if body is None:
+        body = cand_body if cand_body is not None else case.get('body')
+    body = _unwrap(body)
+
+    if isinstance(body, str) and body.strip():
+        try:
+            body = json.loads(body)
+        except Exception:
+            pass
+    return body
 
 
 def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "http://127.0.0.1:8000") -> str:
@@ -8,12 +37,59 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
     code_lines = [
         '"""',
         'Auto-generated Pytest API Suite by CodeBrain.',
-        f'Target Base URL: {base_url}',
         '"""',
+        'import re',
         'import pytest',
         'import httpx',
+        'from jsonpath_ng.ext import parse as parse_jsonpath',
         '',
-        f'BASE_URL = "{base_url}"',
+        f'BASE_URL = {base_url!r}',
+        '',
+        'def _extract_jsonpath(payload, expression):',
+        '    if not isinstance(payload, (dict, list)):',
+        '        return None',
+        '    if isinstance(payload, dict) and expression in payload:',
+        '        return payload[expression]',
+        '    if not expression.startswith("$") and "." in expression:',
+        '        curr = payload',
+        '        for part in expression.split("."):',
+        '            if isinstance(curr, dict) and part in curr:',
+        '                curr = curr[part]',
+        '            else:',
+        '                curr = None',
+        '                break',
+        '        if curr is not None:',
+        '            return curr',
+        '    query = expression if expression.startswith("$") else f"$.{expression}"',
+        '    try:',
+        '        matches = parse_jsonpath(query).find(payload)',
+        '        return matches[0].value if matches else None',
+        '    except Exception:',
+        '        return None',
+        '',
+        'def _evaluate_assertion(actual, condition, expected):',
+        '    op = (condition or "EQUALS").upper()',
+        '    if op in ("IS_NULL", "NULL", "NONE"):',
+        '        return actual is None',
+        '    if op in ("NOT_NULL", "NOT_NONE", "EXISTS"):',
+        '        return actual is not None and actual != ""',
+        '    if actual is None:',
+        '        return False',
+        '    if op in ("EQUALS", "EQ", "=="):',
+        '        return str(actual).strip() == str(expected).strip()',
+        '    if op in ("NOT_EQUALS", "NEQ", "!="):',
+        '        return str(actual).strip() != str(expected).strip()',
+        '    if op == "CONTAINS":',
+        '        return str(expected) in ( [str(x) for x in actual] if isinstance(actual, list) else str(actual) )',
+        '    if op == "NOT_CONTAINS":',
+        '        return str(expected) not in str(actual)',
+        '    if op in ("GREATER_THAN", "GT", ">"):',
+        '        return float(actual) > float(expected)',
+        '    if op in ("LESS_THAN", "LT", "<"):',
+        '        return float(actual) < float(expected)',
+        '    if op in ("REGEX_MATCH", "REGEX"):',
+        '        return bool(re.search(str(expected), str(actual)))',
+        '    return str(actual) == str(expected)',
         '',
     ]
 
@@ -28,7 +104,8 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
         if not path.startswith('/'):
             path = '/' + path
 
-        body = case.get('request_body_json') or req_info.get('body') or case.get('body')
+        body = _resolve_body(case, req_info)
+
         query_params = {}
         raw_query = case.get('request_query') or req_info.get('query') or case.get('query_params', [])
         for q in raw_query:
@@ -38,28 +115,37 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
                 if k:
                     query_params[k] = v
 
+        # Substitute path parameters if provided
+        for rp in (case.get('request_rest') or req_info.get('rest') or []):
+            if isinstance(rp, dict):
+                rk = rp.get('param_name') or rp.get('name') or rp.get('key')
+                rv = rp.get('param_value') if rp.get('param_value') is not None else rp.get('value')
+                if rk and rv is not None:
+                    path = path.replace('{' + str(rk) + '}', str(rv)).replace(':' + str(rk), str(rv))
+
         headers_dict = {"User-Agent": "CodeBrain-Pytest/2.0"}
         raw_headers = case.get('headers') or req_info.get('headers', [])
         for h in raw_headers:
             if isinstance(h, dict) and h.get('name') and h.get('value'):
                 headers_dict[h['name']] = str(h['value'])
 
+        desc = case.get("description", case.get("name", "Test Case"))
         code_lines.append(f"def {fn_name}():")
-        code_lines.append(f'    """{case.get("description", case.get("name", "Test Case"))}"""')
-        code_lines.append(f'    url = f"{{BASE_URL}}{path}"')
-        code_lines.append(f'    headers = {json.dumps(headers_dict, ensure_ascii=False)}')
+        code_lines.append(f'    {repr(str(desc))}')
+        code_lines.append(f'    url = f"{{BASE_URL}}" + {path!r}')
+        code_lines.append(f'    headers = {headers_dict!r}')
         if query_params:
-            code_lines.append(f'    params = {json.dumps(query_params, ensure_ascii=False)}')
+            code_lines.append(f'    params = {query_params!r}')
         else:
             code_lines.append('    params = None')
 
-        if body:
-            code_lines.append(f'    json_body = {json.dumps(body, ensure_ascii=False, indent=8).strip()}')
+        if body is not None:
+            code_lines.append(f'    json_body = {body!r}')
         else:
             code_lines.append('    json_body = None')
 
         code_lines.append(f'    with httpx.Client(timeout=10.0) as client:')
-        code_lines.append(f'        response = client.request("{method}", url, params=params, json=json_body, headers=headers)')
+        code_lines.append(f'        response = client.request({method!r}, url, params=params, json=json_body, headers=headers)')
 
         # Assertions
         assertions = case.get('assertions') or []
@@ -69,7 +155,7 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
         expected_status = 200
         for a in assertions:
             expr = a.get('expression', '')
-            if expr in ('code', 'status', 'status_code'):
+            if expr in ('code', 'status', 'status_code', 'http_status'):
                 try:
                     expected_status = int(a.get('expectedValue', a.get('expected', 200)))
                 except (ValueError, TypeError):
@@ -81,8 +167,25 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
         else:
             code_lines.append(f'        assert response.status_code == {expected_status}, f"Expected {expected_status}, got {{response.status_code}}: {{response.text}}"')
 
-        code_lines.append('        data = response.json()')
-        code_lines.append('        assert data is not None')
+        code_lines.append('        content_type = response.headers.get("content-type", "")')
+        code_lines.append('        data = response.json() if response.content and "json" in content_type.lower() else None')
+
+        non_status_assertions = [
+            a for a in assertions
+            if isinstance(a, dict) and a.get('expression') and a.get('expression') not in ('code', 'status', 'status_code', 'http_status')
+        ]
+        if non_status_assertions:
+            code_lines.append('        assert data is not None, "Expected JSON response body for assertions"')
+            for a in non_status_assertions:
+                expr = a.get('expression')
+                cond = (a.get('condition') or a.get('operator') or condition or 'EQUALS').upper()
+                exp_val = a.get('expectedValue', a.get('expected'))
+                code_lines.append(
+                    f'        assert _evaluate_assertion(_extract_jsonpath(data, {expr!r}), {cond!r}, {exp_val!r}), f"Assertion failed for {expr!r}"'
+                )
+        else:
+            code_lines.append('        if response.content and "json" in content_type.lower():')
+            code_lines.append('            assert data is not None')
         code_lines.append('')
 
     return "\n".join(code_lines)
@@ -110,12 +213,13 @@ def generate_postman_collection(test_cases: List[Dict[str, Any]], base_url: str 
                 if k:
                     query.append({"key": str(k), "value": str(v) if v is not None else ""})
 
-        body_data = case.get('request_body_json') or req_info.get('body') or case.get('body')
+        body_data = _resolve_body(case, req_info)
         req_body = {}
         if body_data:
+            raw_payload = body_data if isinstance(body_data, str) else json.dumps(body_data, ensure_ascii=False, indent=2)
             req_body = {
                 "mode": "raw",
-                "raw": json.dumps(body_data, ensure_ascii=False, indent=2),
+                "raw": raw_payload,
                 "options": {"raw": {"language": "json"}}
             }
 
@@ -127,7 +231,7 @@ def generate_postman_collection(test_cases: List[Dict[str, Any]], base_url: str 
         expected_status = 200
         for a in assertions:
             expr = a.get('expression', '')
-            if expr in ('code', 'status', 'status_code'):
+            if expr in ('code', 'status', 'status_code', 'http_status'):
                 try:
                     expected_status = int(a.get('expectedValue', a.get('expected', 200)))
                 except (ValueError, TypeError):
@@ -136,7 +240,7 @@ def generate_postman_collection(test_cases: List[Dict[str, Any]], base_url: str 
         condition = case.get('assertion_condition', 'EQUALS')
         test_script_lines = [
             'pm.test("Status code is valid", function () {',
-            f'    pm.response.to.have.status({expected_status});' if condition != 'NOT_EQUALS' else '    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 500]);',
+            f'    pm.response.to.have.status({expected_status});' if condition != 'NOT_EQUALS' else '    pm.expect(pm.response.code).to.not.equal(200);',
             '});',
             'pm.test("Response is valid JSON", function () {',
             '    var jsonData = pm.response.json();',

@@ -17,28 +17,47 @@ class GeneratedTestCaseItem(BaseModel):
     @classmethod
     def validate_description(cls, v: Any) -> str:
         if not v or not str(v).strip():
-            return "Test Case Scenario"
+            raise ValueError("description must not be empty")
+        return str(v).strip()
+
+    @field_validator("preconditions", mode="before")
+    @classmethod
+    def validate_preconditions(cls, v: Any) -> str:
+        if v is None:
+            return ""
+        if isinstance(v, list):
+            return "\n".join(str(item).strip() for item in v if str(item).strip())
         return str(v).strip()
 
     @field_validator("test_steps", mode="before")
     @classmethod
     def validate_test_steps(cls, v: Any) -> List[str]:
         if isinstance(v, list):
-            return [str(step).strip() for step in v if str(step).strip()]
+            cleaned = [str(step).strip() for step in v if str(step).strip()]
+            if not cleaned:
+                raise ValueError("test_steps must not be empty")
+            return cleaned
         if isinstance(v, str) and v.strip():
             lines = [line.strip() for line in v.split("\n") if line.strip()]
-            return lines if lines else ["Perform verification action"]
-        return ["Perform verification action"]
+            if not lines:
+                raise ValueError("test_steps must not be empty")
+            return lines
+        raise ValueError("test_steps must not be empty")
 
     @field_validator("expected_results", mode="before")
     @classmethod
     def validate_expected_results(cls, v: Any) -> List[str]:
         if isinstance(v, list):
-            return [str(item).strip() for item in v if str(item).strip()]
+            cleaned = [str(item).strip() for item in v if str(item).strip()]
+            if not cleaned:
+                raise ValueError("expected_results must not be empty")
+            return cleaned
         if isinstance(v, str) and v.strip():
             lines = [line.strip() for line in v.split("\n") if line.strip()]
-            return lines if lines else ["Action executes successfully as expected"]
-        return ["Action executes successfully as expected"]
+            if not lines:
+                raise ValueError("expected_results must not be empty")
+            return lines
+        raise ValueError("expected_results must not be empty")
 
 
 def extract_and_parse_test_cases(response_text: str) -> List[Dict[str, Any]]:

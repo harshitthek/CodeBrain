@@ -108,7 +108,7 @@ class LLMServiceFactory:
             config.get('api_key')
             or provider_config.get('api_key')
             or os.getenv(f"{provider.upper()}_API_KEY")
-            or os.getenv("OPENAI_API_KEY")
+            or (os.getenv("OPENAI_API_KEY") if provider.lower() == "openai" else None)
             or ("ollama" if provider.lower() == "ollama" else "placeholder_key")
         )
         provider_config['api_key'] = api_key
@@ -131,8 +131,9 @@ class LLMServiceFactory:
         # Remove metadata not accepted by ChatOpenAI
         final_config.pop('name', None)
         
-        # Log final configuration (for debugging)
-        logger.info(f"Final config for {provider}: {final_config}")
+        # Log final configuration with masked credentials
+        safe_config = {k: ('***' if 'key' in k.lower() or 'secret' in k.lower() else v) for k, v in final_config.items()}
+        logger.info(f"Final config for {provider}: {safe_config}")
         
         # Create corresponding service instance according to provider
         if provider.lower() == "deepseek":

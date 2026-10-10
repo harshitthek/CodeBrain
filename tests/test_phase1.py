@@ -33,9 +33,10 @@ class TestPhase1Suite:
         assert len(item1.test_steps) == 3
         assert item1.priority == "P1"
 
-        # 2. String inputs auto-coerced to lists
+        # 2. String inputs auto-coerced to lists and list preconditions joined with newlines
         item2 = GeneratedTestCaseItem.model_validate({
             "description": "String step test",
+            "preconditions": ["Precondition 1", "Precondition 2"],
             "test_steps": "Step 1\nStep 2\nStep 3",
             "expected_results": "Expected result here",
         })
@@ -43,6 +44,22 @@ class TestPhase1Suite:
         assert len(item2.test_steps) == 3
         assert isinstance(item2.expected_results, list)
         assert item2.expected_results[0] == "Expected result here"
+        assert item2.preconditions == "Precondition 1\nPrecondition 2"
+
+        # 3. Empty required fields raise ValidationError
+        with pytest.raises(Exception):
+            GeneratedTestCaseItem.model_validate({
+                "description": "   ",
+                "test_steps": ["Step 1"],
+                "expected_results": ["Result 1"],
+            })
+        with pytest.raises(Exception):
+            GeneratedTestCaseItem.model_validate({
+                "description": "Valid description",
+                "test_steps": [],
+                "expected_results": ["Result 1"],
+            })
+
 
     def test_extract_and_parse_json_markdown_blocks(self):
         """Verify extraction from markdown fences, dirty preambles, and brackets."""
@@ -113,7 +130,9 @@ Let me know if you need more!
         assert reviews.first().review_comments == "Looks solid, approved for sprint 12."
 
     def test_export_test_cases_excel_openpyxl(self):
-        """Verify openpyxl Excel exporter outputs valid .xlsx spreadsheet."""
+        """Verify openpyxl Excel exporter enforces auth and outputs valid .xlsx spreadsheet."""
+        from django.contrib.auth.models import User
+
         tc = TestCase.objects.create(
             title="Export Test",
             description="Verify export to Excel",
@@ -124,7 +143,12 @@ Let me know if you need more!
         )
 
         rf = RequestFactory()
+        unauth_req = rf.get(f"/test_case_reviewer/api/export-test-cases-excel/?ids={tc.id}")
+        unauth_resp = export_test_cases_excel(unauth_req)
+        assert unauth_resp.status_code == 403
+
         request = rf.get(f"/test_case_reviewer/api/export-test-cases-excel/?ids={tc.id}")
+        request.user = User.objects.create_superuser(username="exporter", email="exporter@example.com", password="pw")
         response = export_test_cases_excel(request)
 
         assert response.status_code == 200
@@ -139,6 +163,7 @@ Let me know if you need more!
         assert sheet.cell(row=1, column=1).value == "No."
         assert sheet.cell(row=2, column=2).value == tc.id
 
+
     def test_prd_extract_content_from_file_text_and_md(self):
         """Verify prd analyzer file extractor handles .txt and .md files."""
         md_file = SimpleUploadedFile("spec.md", b"# Feature Specification\nUser can reset password via email.")
@@ -148,3 +173,25 @@ Let me know if you need more!
         txt_file = SimpleUploadedFile("notes.txt", b"Requirement notes line 1\nRequirement notes line 2")
         content_txt = extract_content_from_file(txt_file, ".txt")
         assert "Requirement notes line 1" in content_txt
+
+    def test_prd_analyzer_multipart_file_upload(self, monkeypatch):
+        """Verify prd_analyzer view processes a file-only multipart POST without RawPostDataException."""
+        from apps.ai_agents.prd_analyzer.views import prd_analyzer
+        from apps.ai_agents.prd_analyzer.analyser import PrdAnalyserAgent
+
+        monkeypatch.setattr(
+            PrdAnalyserAgent,
+            "analyse",
+            lambda self, content: {"summary": {"total_test_points": 1}, "test_points": []}
+        )
+
+        rf = RequestFactory()
+        md_file = SimpleUploadedFile("prd_spec.md", b"# Checkout Flow\nUser completes payment.", content_type="text/markdown")
+        request = rf.post("/prd_analyzer/", data={"single_file": md_file, "input_mode": "upload"})
+        response = prd_analyzer(request)
+
+        assert response.status_code == 200
+        payload = json.loads(response.content)
+        assert payload["success"] is True
+        assert payload["result"]["summary"]["total_test_points"] == 1
+

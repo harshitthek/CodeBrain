@@ -2,36 +2,123 @@ import re
 import json
 import time
 import asyncio
-from typing import List, Dict, Any, Optional
-from urllib.parse import urlparse
+from typing import List, Dict, Any, Optional, Tuple
+import ipaddress
+import socket
+from urllib.parse import urlparse, urlunparse
 import httpx
 from jsonpath_ng.ext import parse as parse_jsonpath
+from .exporters import _resolve_body
 
 
 class APITestRunner:
     """Asynchronous HTTP test execution engine evaluating status codes and JSONPath assertions."""
 
-    def __init__(self, base_url: str, timeout: float = 10.0, max_concurrency: int = 5):
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float = 10.0,
+        max_concurrency: int = 5,
+        verify_tls: bool = True,
+        verify: Optional[bool] = None,
+        allow_private: Optional[bool] = None,
+    ):
         self.base_url = base_url.strip().rstrip('/')
         self.timeout = timeout
+        self.max_concurrency = max_concurrency
+        self.verify_tls = verify if verify is not None else verify_tls
+        self.verify = self.verify_tls
+        if allow_private is None:
+            try:
+                from django.conf import settings
+                allow_private = bool(getattr(settings, 'ALLOW_PRIVATE_RUNNER_TARGETS', False))
+            except Exception:
+                allow_private = False
+        self.allow_private = allow_private
         self.semaphore = asyncio.Semaphore(max_concurrency)
+
+    def _is_blocked_ip(self, ip: Any, hostname: str = "") -> bool:
+        try:
+            from django.conf import settings
+            allowed_hosts = set(getattr(settings, 'RUNNER_ALLOWED_HOSTS', ()) or ())
+        except Exception:
+            allowed_hosts = set()
+
+        if ip == ipaddress.ip_address('fd00:ec2::254'):
+            return True
+        if ip.is_link_local or ip.is_multicast or ip.is_unspecified or ip.is_reserved:
+            return True
+        if isinstance(ip, ipaddress.IPv4Address) and ip in ipaddress.IPv4Network('169.254.0.0/16'):
+            return True
+        if not self.allow_private and str(ip) not in allowed_hosts and hostname not in allowed_hosts:
+            if ip.is_private or ip.is_loopback:
+                return True
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            v4 = ip.ipv4_mapped
+            if (
+                v4.is_link_local
+                or v4.is_multicast
+                or v4.is_unspecified
+                or v4.is_reserved
+                or v4 in ipaddress.IPv4Network('169.254.0.0/16')
+            ):
+                return True
+            if not self.allow_private and str(v4) not in allowed_hosts and hostname not in allowed_hosts:
+                if v4.is_private or v4.is_loopback:
+                    return True
+        return False
+
+    def _resolve_safe_target(self, url: str) -> Tuple[bool, Optional[str], Optional[str]]:
+        """Validate URL target, resolve hostname, and return (is_safe, validated_ip, original_netloc)."""
+        try:
+            parsed = urlparse(url)
+            if parsed.scheme not in ('http', 'https'):
+                return False, None, None
+            hostname = (parsed.hostname or '').lower().strip('[]')
+            if not hostname:
+                return False, None, None
+
+            if hostname in ('169.254.169.254', 'metadata.google.internal', 'metadata.goog', 'fd00:ec2::254'):
+                return False, None, None
+
+            # Check IP representation (including decimal and hex)
+            try:
+                try:
+                    ip = ipaddress.ip_address(int(hostname, 0))
+                except (ValueError, TypeError):
+                    ip = ipaddress.ip_address(hostname)
+
+                if self._is_blocked_ip(ip, hostname):
+                    return False, None, None
+                return True, str(ip), None
+            except ValueError:
+                # Hostname is a domain name: resolve DNS and reject on failure
+                try:
+                    port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+                    addr_info = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+                    if not addr_info:
+                        return False, None, None
+                    validated_ips: List[str] = []
+                    for _, _, _, _, sockaddr in addr_info:
+                        resolved_ip = ipaddress.ip_address(sockaddr[0])
+                        if self._is_blocked_ip(resolved_ip, hostname):
+                            return False, None, None
+                        validated_ips.append(str(resolved_ip))
+                    return True, validated_ips[0], parsed.netloc
+                except (socket.gaierror, ValueError, OSError):
+                    return False, None, None
+        except Exception:
+            return False, None, None
 
     def _is_safe_target_url(self, url: str) -> bool:
         """Prevent requests to cloud instance metadata and invalid endpoints."""
         return self._is_safe_target(url)
 
     def _is_safe_target(self, url: str) -> bool:
-        """Validate URL protocol and prevent cloud metadata access."""
-        try:
-            parsed = urlparse(url)
-            if parsed.scheme not in ('http', 'https'):
-                return False
-            hostname = (parsed.hostname or '').lower()
-            if hostname == '169.254.169.254':
-                return False
-            return True
-        except Exception:
-            return False
+        """Validate URL protocol and prevent cloud metadata access and SSRF."""
+        is_safe, _, _ = self._resolve_safe_target(url)
+        return is_safe
+
 
     def _substitute_path_variables(self, path: str, rest_params: List[Dict[str, Any]]) -> str:
         """Replace path placeholders like /users/{id} with parameter values."""
@@ -207,8 +294,8 @@ class APITestRunner:
                         query_params[name] = val
 
             # Extract body
-            body_json = case.get('request_body_json') or req_info.get('body') or case.get('body')
-            if not isinstance(body_json, dict):
+            body_json = _resolve_body(case, req_info)
+            if not isinstance(body_json, (dict, list)):
                 body_json = None
 
             # Extract assertions
@@ -222,7 +309,8 @@ class APITestRunner:
 
             condition_hint = case.get('assertion_condition', 'EQUALS')
 
-            if not self._is_safe_target_url(full_url):
+            is_safe, resolved_ip, original_netloc = self._resolve_safe_target(full_url)
+            if not is_safe:
                 return {
                     "case_id": case.get('id', 'N/A'),
                     "name": case.get('name', 'Blocked URL'),
@@ -244,20 +332,35 @@ class APITestRunner:
             custom_headers = case.get('headers') or req_info.get('headers', [])
             for h in custom_headers:
                 if isinstance(h, dict) and h.get('name') and h.get('value'):
-                    headers[h['name']] = str(h['value'])
+                    h_name = str(h['name']).strip()
+                    if original_netloc and resolved_ip and h_name.lower() == 'host':
+                        continue
+                    headers[h_name] = str(h['value'])
 
-            if body_json and "Content-Type" not in headers:
+            if body_json and not any(k.lower() == "content-type" for k in headers):
                 headers["Content-Type"] = "application/json"
+
+            request_url = full_url
+            request_kwargs: Dict[str, Any] = {}
+            if original_netloc and resolved_ip:
+                parsed_full = urlparse(full_url)
+                ip_host = f"[{resolved_ip}]" if ":" in resolved_ip and not resolved_ip.startswith("[") else resolved_ip
+                pinned_netloc = f"{ip_host}:{parsed_full.port}" if parsed_full.port else ip_host
+                request_url = urlunparse(parsed_full._replace(netloc=pinned_netloc))
+                headers["Host"] = original_netloc
+                if parsed_full.scheme == "https" and parsed_full.hostname:
+                    request_kwargs["extensions"] = {"sni_hostname": parsed_full.hostname}
 
             start_time = time.perf_counter()
             try:
                 response = await client.request(
                     method=method,
-                    url=full_url,
+                    url=request_url,
                     params=query_params if query_params else None,
                     json=body_json,
                     headers=headers,
-                    timeout=self.timeout
+                    timeout=self.timeout,
+                    **request_kwargs,
                 )
                 elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
@@ -294,7 +397,7 @@ class APITestRunner:
 
     async def execute_suite(self, test_cases: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Execute a full test suite asynchronously and return execution summary."""
-        async with httpx.AsyncClient(verify=False) as client:
+        async with httpx.AsyncClient(verify=self.verify_tls) as client:
             tasks = [self.execute_case(client, case) for case in test_cases]
             results = await asyncio.gather(*tasks)
 

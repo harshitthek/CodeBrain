@@ -188,26 +188,41 @@ def download_file(request):
 
 def _extract_cases_from_payload(data: dict) -> list:
     """Extract test cases directly from data or from referenced file_path"""
-    cases = data.get('test_cases', [])
-    if cases:
-        return cases
+    if not isinstance(data, dict):
+        raise ValueError("Request payload must be a JSON object")
+    cases = data.get('test_cases')
+    if cases is not None:
+        if not isinstance(cases, list) or not all(isinstance(c, dict) for c in cases):
+            raise ValueError("test_cases must be a list of objects")
+        if cases:
+            return cases
     file_path = data.get('file_path')
-    if file_path and os.path.exists(file_path):
+    if file_path:
+        media_root = os.path.realpath(str(settings.MEDIA_ROOT))
+        real_path = os.path.realpath(str(file_path))
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = json.load(f)
-            extracted = []
-            for api in content.get('apiDefinitions', []):
-                for case in api.get('apiTestCaseList', []):
-                    req = case.setdefault('request', {})
-                    if not req.get('path'):
-                        req['path'] = api.get('path', '')
-                    if not req.get('method'):
-                        req['method'] = api.get('method', 'GET')
-                    extracted.append(case)
-            return extracted
-        except Exception as e:
-            logger.warning(f"Failed to read test cases from {file_path}: {e}")
+            is_within_media = os.path.commonpath([real_path, media_root]) == media_root
+        except ValueError:
+            is_within_media = False
+
+        if is_within_media and os.path.isfile(real_path):
+            try:
+                with open(real_path, 'r', encoding='utf-8') as f:
+                    content = json.load(f)
+                extracted = []
+                for api in content.get('apiDefinitions', []):
+                    for case in api.get('apiTestCaseList', []):
+                        if not isinstance(case, dict):
+                            continue
+                        req = case.setdefault('request', {})
+                        if not req.get('path'):
+                            req['path'] = api.get('path', '')
+                        if not req.get('method'):
+                            req['method'] = api.get('method', 'GET')
+                        extracted.append(case)
+                return extracted
+            except Exception as e:
+                logger.warning(f"Failed to read test cases from {real_path}: {e}")
     return []
 
 
@@ -216,9 +231,16 @@ def execute_test_cases(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
 
+    if getattr(settings, 'REQUIRE_RUNNER_AUTH', False):
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return JsonResponse({'success': False, 'message': 'Authentication required'}, status=403)
+
     try:
         data = json.loads(request.body)
-        base_url = data.get('base_url', '').strip()
+        if not isinstance(data, dict):
+            return JsonResponse({'success': False, 'message': 'Invalid JSON payload'}, status=400)
+        base_url = str(data.get('base_url', '')).strip()
         test_cases = _extract_cases_from_payload(data)
 
         if not base_url:
@@ -226,11 +248,11 @@ def execute_test_cases(request):
         if not test_cases:
             return JsonResponse({'success': False, 'message': 'No test cases found for execution'}, status=400)
 
-        import asyncio
+        from asgiref.sync import async_to_sync
         from .runner import APITestRunner
 
         runner = APITestRunner(base_url=base_url)
-        summary = asyncio.run(runner.execute_suite(test_cases))
+        summary = async_to_sync(runner.execute_suite)(test_cases)
 
         return JsonResponse({
             'success': True,
@@ -239,9 +261,12 @@ def execute_test_cases(request):
 
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON in request body'}, status=400)
+    except ValueError as ve:
+        return JsonResponse({'success': False, 'message': str(ve)}, status=400)
     except Exception as e:
         logger.error(f"Error executing test suite: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'message': f"Execution error: {str(e)}"}, status=500)
+
 
 
 def export_pytest_view(request):
@@ -254,7 +279,9 @@ def export_pytest_view(request):
         from .exporters import generate_pytest_script
 
         data = json.loads(request.body)
-        base_url = data.get('base_url', 'http://127.0.0.1:8000')
+        if not isinstance(data, dict):
+            return JsonResponse({'success': False, 'message': 'Invalid JSON payload'}, status=400)
+        base_url = str(data.get('base_url', 'http://127.0.0.1:8000'))
         test_cases = _extract_cases_from_payload(data)
 
         if not test_cases:
@@ -266,6 +293,8 @@ def export_pytest_view(request):
         response['Content-Disposition'] = 'attachment; filename="test_api_generated.py"'
         return response
 
+    except (json.JSONDecodeError, ValueError) as ve:
+        return JsonResponse({'success': False, 'message': str(ve)}, status=400)
     except Exception as e:
         logger.error(f"Failed to export Pytest script: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
@@ -281,7 +310,9 @@ def export_postman_view(request):
         from .exporters import generate_postman_collection
 
         data = json.loads(request.body)
-        base_url = data.get('base_url', 'http://127.0.0.1:8000')
+        if not isinstance(data, dict):
+            return JsonResponse({'success': False, 'message': 'Invalid JSON payload'}, status=400)
+        base_url = str(data.get('base_url', 'http://127.0.0.1:8000'))
         test_cases = _extract_cases_from_payload(data)
 
         if not test_cases:
@@ -294,6 +325,9 @@ def export_postman_view(request):
         response['Content-Disposition'] = 'attachment; filename="codebrain_postman_collection.json"'
         return response
 
+    except (json.JSONDecodeError, ValueError) as ve:
+        return JsonResponse({'success': False, 'message': str(ve)}, status=400)
     except Exception as e:
         logger.error(f"Failed to export Postman collection: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
