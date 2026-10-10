@@ -153,12 +153,13 @@
             <div class="tab-pane fade" id="pastePane" role="tabpanel">
                 <div class="form-group my-3">
                     <label for="raw_text"><strong>Requirement or PRD Content:</strong></label>
-                    <textarea class="form-control" id="raw_text" name="raw_text" rows="10" placeholder="Paste product requirements, user stories, or functional specifications here..."></textarea>
+                    <textarea class="form-control" id="raw_text" name="raw_text" rows="10" placeholder="Paste product requirements, user stories, or functional specifications here..." disabled></textarea>
                     <small class="form-text text-muted">You can paste formatted Markdown or plain text directly.</small>
                 </div>
             </div>
         </div>
 
+        <input type="hidden" name="input_mode" id="input_mode" value="upload">
         <div id="uploadStatus" style="margin-top: 10px; margin-bottom: 10px; color: #666; text-align: center;"></div>
 
         <div class="submit-container">
@@ -400,6 +401,29 @@ function displayResults(result) {
     resultTable.style.display = 'block';
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadTab = document.getElementById('upload-tab');
+    const pasteTab = document.getElementById('paste-tab');
+    const fileInput = document.getElementById('single_file');
+    const rawTextInput = document.getElementById('raw_text');
+    const inputModeField = document.getElementById('input_mode');
+
+    if (uploadTab) {
+        uploadTab.addEventListener('click', function() {
+            if (fileInput) fileInput.disabled = false;
+            if (rawTextInput) rawTextInput.disabled = true;
+            if (inputModeField) inputModeField.value = 'upload';
+        });
+    }
+    if (pasteTab) {
+        pasteTab.addEventListener('click', function() {
+            if (fileInput) fileInput.disabled = true;
+            if (rawTextInput) rawTextInput.disabled = false;
+            if (inputModeField) inputModeField.value = 'paste';
+        });
+    }
+});
+
 async function handleSubmit(event) {
     event.preventDefault();
     
@@ -408,22 +432,36 @@ async function handleSubmit(event) {
     const rawTextInput = document.getElementById('raw_text');
     const rawText = rawTextInput ? rawTextInput.value.trim() : '';
     const statusDiv = document.getElementById('uploadStatus');
+    const isPasteMode = document.getElementById('paste-tab')?.classList.contains('active') ||
+                        document.getElementById('pastePane')?.classList.contains('active');
     
-    const hasFile = fileInput.files && fileInput.files[0];
-    if (!hasFile && !rawText) {
-        statusDiv.textContent = 'Please select a document or paste requirements text first.';
+    const hasFile = !isPasteMode && fileInput.files && fileInput.files[0];
+    if (isPasteMode && !rawText) {
+        statusDiv.textContent = 'Please paste requirements text first.';
+        statusDiv.style.color = '#dc3545';
+        return false;
+    }
+    if (!isPasteMode && !hasFile) {
+        statusDiv.textContent = 'Please select a document first.';
         statusDiv.style.color = '#dc3545';
         return false;
     }
 
     // Set processing state
     setProcessingState(true);
-    statusDiv.textContent = hasFile ? 'Analyzing uploaded document, please wait...' : 'Analyzing pasted requirements, please wait...';
+    statusDiv.textContent = isPasteMode ? 'Analyzing pasted requirements, please wait...' : 'Analyzing uploaded document, please wait...';
     statusDiv.style.color = '#007bff';
     statusDiv.style.fontWeight = 'bold';
 
     try {
         const formData = new FormData(form);
+        formData.set('input_mode', isPasteMode ? 'paste' : 'upload');
+        if (isPasteMode) {
+            formData.delete('single_file');
+            formData.set('raw_text', rawText);
+        } else {
+            formData.delete('raw_text');
+        }
         const response = await fetch(form.action, {
             method: 'POST',
             body: formData,

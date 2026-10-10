@@ -1,0 +1,11 @@
+{
+  "name": "dala-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dala - Autonomous Workplace Intelligence Frontend",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "dev": "npm --prefix frontend run dev",
+    "preview": "npm --prefix frontend run preview"
+  }
+}

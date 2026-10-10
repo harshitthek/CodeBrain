@@ -721,11 +721,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     })
                 });
 
-                const data = await response.json();
-                if (data.success && data.summary) {
+                let data = {};
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText || 'Server error'}`);
+                    }
+                    throw new Error('Invalid JSON response from server');
+                }
+                if (response.ok && data.success && data.summary) {
                     renderExecutionSummary(data.summary);
                 } else {
-                    alert('Execution failed: ' + (data.message || 'Unknown error'));
+                    alert('Execution failed: ' + (data.message || response.statusText || 'Unknown error'));
                 }
             } catch (err) {
                 console.error('Test execution error:', err);
@@ -772,8 +780,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     <strong>${escapeHtml(res.name || 'API Case')}</strong><br>
                     <small class="text-muted">${escapeHtml(res.url || '')}</small>
                 </td>
-                <td><code>${res.status_code || '-'}</code></td>
-                <td>${res.latency_ms ? res.latency_ms + ' ms' : '-'}</td>
+                <td><code>${escapeHtml(String(res.status_code || '-'))}</code></td>
+                <td>${res.latency_ms ? escapeHtml(String(res.latency_ms)) + ' ms' : '-'}</td>
                 <td><span class="badge ${passedAssertions === totalAssertions ? 'badge-success' : 'badge-danger'}">${passedAssertions}/${totalAssertions}</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-info" type="button" data-toggle="collapse" data-target="#detail-${idx}">
@@ -837,8 +845,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (!response.ok) {
-                    const err = await response.json();
-                    alert('Pytest export failed: ' + (err.message || response.statusText));
+                    let errMsg = response.statusText || `HTTP ${response.status}`;
+                    try {
+                        const err = await response.json();
+                        if (err && err.message) errMsg = err.message;
+                    } catch (_) {}
+                    alert('Pytest export failed: ' + errMsg);
                     return;
                 }
 
@@ -877,8 +889,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
 
                 if (!response.ok) {
-                    const err = await response.json();
-                    alert('Postman export failed: ' + (err.message || response.statusText));
+                    let errMsg = response.statusText || `HTTP ${response.status}`;
+                    try {
+                        const err = await response.json();
+                        if (err && err.message) errMsg = err.message;
+                    } catch (_) {}
+                    alert('Postman export failed: ' + errMsg);
                     return;
                 }
 
