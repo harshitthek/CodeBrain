@@ -362,3 +362,129 @@ def update_test_case_status(request):
     except Exception as e:
         logger.error(f"Failed to update test case status: {str(e)}", exc_info=True)
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+def pipeline_view(request):
+    """Render unified autonomous multi-agent QA pipeline interface"""
+    return render(request, 'pipeline.html')
+
+
+@require_http_methods(["POST"])
+def pipeline_run_api(request):
+    """Execute autonomous Actor-Critic reflection pipeline via API"""
+    try:
+        data = json.loads(request.body)
+        requirements = data.get('requirements', '').strip()
+        min_score = float(data.get('min_score', 85.0))
+        max_iterations = int(data.get('max_iterations', 2))
+        llm_provider = data.get('llm_provider', 'deepseek')
+
+        if not requirements:
+            return JsonResponse({'success': False, 'message': 'Requirements text is required'}, status=400)
+
+        from apps.llm import LLMServiceFactory
+        from apps.knowledge.service import get_knowledgeService_instance
+        from apps.ai_agents.test_case_generator.generator import TestCaseGeneratorAgent
+        from apps.ai_agents.test_case_reviewer.reviewer import TestCaseReviewerAgent
+        from apps.ai_agents.common.orchestrator import ActorCriticReflectionEngine
+
+        llm = LLMServiceFactory.create(llm_provider)
+        ks = get_knowledgeService_instance()
+
+        generator = TestCaseGeneratorAgent(
+            llm_service=llm,
+            knowledge_service=ks,
+            case_design_methods=["Equivalence", "Boundary"],
+            case_categories=["Functional", "Exception"],
+            case_count=int(data.get('case_count', 5))
+        )
+        reviewer = TestCaseReviewerAgent(llm_service=llm, knowledge_service=ks)
+
+        engine = ActorCriticReflectionEngine(
+            generator_agent=generator,
+            reviewer_agent=reviewer,
+            min_score=min_score,
+            max_iterations=max_iterations
+        )
+
+        result = engine.run(requirements)
+        return JsonResponse(result)
+
+    except Exception as e:
+        logger.error(f"Error in pipeline_run_api: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@require_http_methods(["POST"])
+def pipeline_export_tms(request):
+    """Export test cases to Jira, TestRail, XMind, or JUnit XML format"""
+    try:
+        data = json.loads(request.body)
+        target = data.get('target', 'jira').lower()
+        test_cases = data.get('test_cases', [])
+        project_key = data.get('project_key', 'QA')
+
+        if not test_cases:
+            return JsonResponse({'success': False, 'message': 'No test cases to export'}, status=400)
+
+        from apps.core.exporters import JiraExporter, TestRailExporter, XMindExporter, JUnitExporter
+
+        if target == 'jira':
+            exporter = JiraExporter(project_key=project_key)
+            formatted = exporter.export_suite(test_cases)
+            return JsonResponse({
+                'success': True,
+                'target': 'jira',
+                'filename': f'{project_key}_jira_issues.json',
+                'download_content': json.dumps(formatted, ensure_ascii=False, indent=2),
+                'content_type': 'application/json'
+            })
+
+        elif target == 'testrail':
+            section_id = int(data.get('section_id', 1))
+            exporter = TestRailExporter(section_id=section_id)
+            formatted = exporter.export_suite(test_cases)
+            return JsonResponse({
+                'success': True,
+                'target': 'testrail',
+                'filename': f'testrail_section_{section_id}_cases.json',
+                'download_content': json.dumps(formatted, ensure_ascii=False, indent=2),
+                'content_type': 'application/json'
+            })
+
+        elif target == 'xmind':
+            exporter = XMindExporter(root_title=f"{project_key} Test Suite")
+            archive_bytes = exporter.generate_xmind_archive(test_cases)
+            from django.http import HttpResponse
+            response = HttpResponse(archive_bytes, content_type='application/vnd.xmind.workbook')
+            response['Content-Disposition'] = f'attachment; filename="{project_key}_test_suite.xmind"'
+            return response
+
+        elif target == 'markdown':
+            exporter = XMindExporter(root_title=f"{project_key} Test Suite")
+            md_text = exporter.generate_markdown_mindmap(test_cases)
+            return JsonResponse({
+                'success': True,
+                'target': 'markdown',
+                'filename': f'{project_key}_mindmap.md',
+                'download_content': md_text,
+                'content_type': 'text/markdown'
+            })
+
+        elif target == 'junit':
+            exporter = JUnitExporter(suite_name=f"{project_key} Test Suite")
+            xml_text = exporter.generate_junit_xml(test_cases)
+            return JsonResponse({
+                'success': True,
+                'target': 'junit',
+                'filename': f'{project_key}_junit.xml',
+                'download_content': xml_text,
+                'content_type': 'application/xml'
+            })
+
+        return JsonResponse({'success': False, 'message': f'Unsupported export target: {target}'}, status=400)
+
+    except Exception as e:
+        logger.error(f"Error in pipeline_export_tms: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+

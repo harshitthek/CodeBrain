@@ -1,5 +1,6 @@
 import os
 import json
+import tempfile
 from django.http import JsonResponse
 from apps.utils.logger_manager import get_logger
 from apps.ai_agents.prd_analyzer.analyser import PrdAnalyserAgent
@@ -23,9 +24,6 @@ logger = get_logger(__name__)
 def extract_content_from_file(uploaded_file, file_type: str) -> str:
     """Extract plain text / markdown from uploaded document."""
     file_type = file_type.lower()
-    save_dir = os.path.join(settings.BASE_DIR, 'prd')
-    os.makedirs(save_dir, exist_ok=True)
-    temp_path = os.path.join(save_dir, uploaded_file.name)
 
     if file_type in ['.md', '.txt']:
         raw_bytes = uploaded_file.read()
@@ -48,13 +46,17 @@ def extract_content_from_file(uploaded_file, file_type: str) -> str:
             raise ValueError(f"Could not extract text from PDF: {str(e)}")
 
     elif file_type == '.docx':
-        with open(temp_path, 'wb+') as f:
-            for chunk in uploaded_file.chunks():
-                f.write(chunk)
-        md_path = temp_path.replace('.docx', '.md')
-        word_to_markdown(temp_path, md_path)
-        with open(md_path, 'r', encoding='utf-8') as f:
-            return f.read()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            input_path = os.path.join(temp_dir, 'input.docx')
+            output_path = os.path.join(temp_dir, 'output.md')
+            with open(input_path, 'wb+') as f:
+                for chunk in uploaded_file.chunks():
+                    f.write(chunk)
+            word_to_markdown(input_path, output_path)
+            if not os.path.exists(output_path):
+                raise ValueError("DOCX conversion failed: output Markdown file was not generated.")
+            with open(output_path, 'r', encoding='utf-8') as f:
+                return f.read()
 
     else:
         raise ValueError(f"Unsupported file format '{file_type}'. Supported: .docx, .md, .txt, .pdf")
@@ -72,7 +74,10 @@ def prd_analyzer(request):
         if not raw_text and request.content_type == 'application/json':
             try:
                 body_data = json.loads(request.body)
-                raw_text = body_data.get('raw_text', '').strip()
+                if isinstance(body_data, dict):
+                    raw_val = body_data.get('raw_text')
+                    if isinstance(raw_val, str):
+                        raw_text = raw_val.strip()
             except Exception:
                 pass
 

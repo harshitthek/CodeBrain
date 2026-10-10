@@ -243,7 +243,17 @@ class APITestRunner:
                         query_params[name] = val
 
             # Extract body
-            body_payload = case.get('request_body_json') or req_info.get('body') or case.get('body')
+            candidate_req_body = req_info.get('body')
+            if isinstance(candidate_req_body, dict) and 'bodyType' in candidate_req_body:
+                json_body_node = candidate_req_body.get('jsonBody')
+                if isinstance(json_body_node, dict) and json_body_node.get('jsonValue'):
+                    candidate_req_body = json_body_node.get('jsonValue')
+                elif isinstance(candidate_req_body.get('raw'), str):
+                    candidate_req_body = candidate_req_body.get('raw')
+                else:
+                    candidate_req_body = None
+
+            body_payload = case.get('request_body_json') or candidate_req_body or case.get('body')
             body_json = None
             body_content = None
             if isinstance(body_payload, (dict, list)):

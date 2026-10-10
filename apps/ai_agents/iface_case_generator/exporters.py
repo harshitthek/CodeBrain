@@ -28,7 +28,22 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
         if not path.startswith('/'):
             path = '/' + path
 
-        body = case.get('request_body_json') or req_info.get('body') or case.get('body')
+        cand_body = req_info.get('body')
+        if isinstance(cand_body, dict) and 'bodyType' in cand_body:
+            json_body_node = cand_body.get('jsonBody')
+            if isinstance(json_body_node, dict) and json_body_node.get('jsonValue'):
+                cand_body = json_body_node.get('jsonValue')
+            elif isinstance(cand_body.get('raw'), str):
+                cand_body = cand_body.get('raw')
+            else:
+                cand_body = None
+        body = case.get('request_body_json') or cand_body or case.get('body')
+        if isinstance(body, str) and body.strip():
+            try:
+                body = json.loads(body)
+            except Exception:
+                pass
+
         query_params = {}
         raw_query = case.get('request_query') or req_info.get('query') or case.get('query_params', [])
         for q in raw_query:
@@ -76,22 +91,36 @@ def generate_pytest_script(test_cases: List[Dict[str, Any]], base_url: str = "ht
             assertions = case['jsonPathAssertion'].get('assertions', [])
 
         expected_status = 200
+        business_code_assertion = None
         for a in assertions:
-            expr = a.get('expression', '')
-            if expr in ('code', 'status', 'status_code'):
-                try:
-                    expected_status = int(a.get('expectedValue', a.get('expected', 200)))
-                except (ValueError, TypeError):
-                    pass
+            expr = str(a.get('expression', ''))
+            raw_val = a.get('expectedValue', a.get('expected'))
+            cond = a.get('condition', case.get('assertion_condition', 'EQUALS'))
+            try:
+                num_val = int(raw_val)
+            except (ValueError, TypeError):
+                num_val = None
+
+            if expr in ('status', 'status_code') or (expr == 'code' and num_val is not None and 100 <= num_val <= 599):
+                if num_val is not None:
+                    expected_status = num_val
+            elif expr in ('code', '$.code', 'code_num'):
+                business_code_assertion = (cond, raw_val)
 
         condition = case.get('assertion_condition', 'EQUALS')
         if condition == 'NOT_EQUALS':
-            code_lines.append(f'        assert response.status_code != 200, f"Expected error status, got {{response.status_code}}"')
+            code_lines.append(f'        assert response.status_code != {expected_status}, f"Expected status != {expected_status}, got {{response.status_code}}"')
         else:
             code_lines.append(f'        assert response.status_code == {expected_status}, f"Expected {expected_status}, got {{response.status_code}}: {{response.text}}"')
 
         code_lines.append('        data = response.json()')
         code_lines.append('        assert data is not None')
+        if business_code_assertion:
+            b_cond, b_val = business_code_assertion
+            if b_cond == 'NOT_EQUALS':
+                code_lines.append(f'        assert data.get("code") != {b_val!r}, f"Expected data.code != {b_val!r}, got {{data.get(\'code\')}}"')
+            else:
+                code_lines.append(f'        assert data.get("code") == {b_val!r}, f"Expected data.code == {b_val!r}, got {{data.get(\'code\')}}"')
         code_lines.append('')
 
     return "\n".join(code_lines)
@@ -119,7 +148,22 @@ def generate_postman_collection(test_cases: List[Dict[str, Any]], base_url: str 
                 if k:
                     query.append({"key": str(k), "value": str(v) if v is not None else ""})
 
-        body_data = case.get('request_body_json') or req_info.get('body') or case.get('body')
+        cand_body = req_info.get('body')
+        if isinstance(cand_body, dict) and 'bodyType' in cand_body:
+            json_body_node = cand_body.get('jsonBody')
+            if isinstance(json_body_node, dict) and json_body_node.get('jsonValue'):
+                cand_body = json_body_node.get('jsonValue')
+            elif isinstance(cand_body.get('raw'), str):
+                cand_body = cand_body.get('raw')
+            else:
+                cand_body = None
+        body_data = case.get('request_body_json') or cand_body or case.get('body')
+        if isinstance(body_data, str) and body_data.strip():
+            try:
+                body_data = json.loads(body_data)
+            except Exception:
+                pass
+
         req_body = {}
         if body_data:
             req_body = {
@@ -135,17 +179,20 @@ def generate_postman_collection(test_cases: List[Dict[str, Any]], base_url: str 
 
         expected_status = 200
         for a in assertions:
-            expr = a.get('expression', '')
-            if expr in ('code', 'status', 'status_code'):
-                try:
-                    expected_status = int(a.get('expectedValue', a.get('expected', 200)))
-                except (ValueError, TypeError):
-                    pass
+            expr = str(a.get('expression', ''))
+            raw_val = a.get('expectedValue', a.get('expected', 200))
+            try:
+                num_val = int(raw_val)
+            except (ValueError, TypeError):
+                num_val = None
+            if expr in ('status', 'status_code') or (expr == 'code' and num_val is not None and 100 <= num_val <= 599):
+                if num_val is not None:
+                    expected_status = num_val
 
         condition = case.get('assertion_condition', 'EQUALS')
         test_script_lines = [
             'pm.test("Status code is valid", function () {',
-            f'    pm.response.to.have.status({expected_status});' if condition != 'NOT_EQUALS' else '    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403, 404, 500]);',
+            f'    pm.response.to.have.status({expected_status});' if condition != 'NOT_EQUALS' else f'    pm.expect(pm.response.code).to.not.equal({expected_status});',
             '});',
             'pm.test("Response is valid JSON", function () {',
             '    var jsonData = pm.response.json();',

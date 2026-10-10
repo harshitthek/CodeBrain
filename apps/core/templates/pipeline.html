@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+
+{% block title %}Autonomous QA Pipeline - CodeBrain{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stepper {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+    .stepper::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 40px;
+        right: 40px;
+        height: 3px;
+        background: #e9ecef;
+        z-index: 1;
+    }
+    .step-item {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        flex: 1;
+    }
+    .step-circle {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: #fff;
+        border: 3px solid #dee2e6;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s;
+    }
+    .step-item.active .step-circle {
+        border-color: #007bff;
+        background: #007bff;
+        color: #fff;
+        box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.2);
+    }
+    .step-item.completed .step-circle {
+        border-color: #28a745;
+        background: #28a745;
+        color: #fff;
+    }
+    .step-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #495057;
+    }
+    .card-shadow {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+    .badge-metric {
+        font-size: 0.95rem;
+        padding: 0.4rem 0.8rem;
+    }
+    .telemetry-box {
+        background: #f8f9fa;
+        border-left: 4px solid #007bff;
+        padding: 1rem;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.88rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="font-weight-bold mb-1">Autonomous Multi-Agent QA Pipeline</h3>
+            <p class="text-muted mb-0">End-to-end PRD intake, Actor-Critic self-healing reflection, and enterprise TMS synchronization.</p>
+        </div>
+        <div>
+            <span class="badge badge-pill badge-primary badge-metric">L2/L3 Autonomous QA</span>
+        </div>
+    </div>
+
+    <!-- Stepper Navigation -->
+    <div class="stepper">
+        <div class="step-item active" id="step-nav-1">
+            <div class="step-circle">1</div>
+            <div class="step-title">Requirements Intake</div>
+        </div>
+        <div class="step-item" id="step-nav-2">
+            <div class="step-circle">2</div>
+            <div class="step-title">Agent Configuration</div>
+        </div>
+        <div class="step-item" id="step-nav-3">
+            <div class="step-circle">3</div>
+            <div class="step-title">Actor-Critic Reflection</div>
+        </div>
+        <div class="step-item" id="step-nav-4">
+            <div class="step-circle">4</div>
+            <div class="step-title">Execution & Sync</div>
+        </div>
+    </div>
+
+    <!-- Step 1: Requirements Intake -->
+    <div class="card card-shadow mb-4" id="step-card-1">
+        <div class="card-header bg-white font-weight-bold">
+            <i class="fas fa-file-text mr-2 text-primary"></i> Step 1: Input Requirements or Specifications
+        </div>
+        <div class="card-body">
+            <div class="form-group">
+                <label for="pipeline-requirements" class="font-weight-bold">Feature Description / User Stories / API Specification:</label>
+                <textarea class="form-control" id="pipeline-requirements" rows="6" placeholder="Paste product requirements, user stories, or OpenAPI/Swagger JSON/YAML spec..."></textarea>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">Supports Markdown PRDs, user acceptance criteria, and raw API contracts.</small>
+                <button type="button" class="btn btn-primary" onclick="goToStep(2)">
+                    Next: Configure Reflection <i class="fas fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 2: Configuration -->
+    <div class="card card-shadow mb-4 d-none" id="step-card-2">
+        <div class="card-header bg-white font-weight-bold">
+            <i class="fas fa-sliders-h mr-2 text-primary"></i> Step 2: Agent Reflection Parameters
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="font-weight-bold">Generator (Actor) Model:</label>
+                        <select class="form-control" id="actor-model">
+                            <option value="deepseek" selected>DeepSeek Chat (Default)</option>
+                            <option value="qwen">Qwen 2.5 Coder</option>
+                            <option value="openai">OpenAI GPT-4o</option>
+                            <option value="ollama">Ollama Local</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="font-weight-bold">Minimum Quality Score (%):</label>
+                        <input type="number" class="form-control" id="min-score" value="85" min="50" max="100">
+                        <small class="text-muted">Target threshold for Critic approval.</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label class="font-weight-bold">Max Reflection Passes (Bound = 2):</label>
+                        <input type="number" class="form-control" id="max-iterations" value="2" min="1" max="2" readonly>
+                        <small class="text-muted">Strict bound to ensure predictable latency.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between mt-3">
+                <button type="button" class="btn btn-outline-secondary" onclick="goToStep(1)">
+                    <i class="fas fa-arrow-left mr-1"></i> Back
+                </button>
+                <button type="button" class="btn btn-success" onclick="startActorCriticPipeline()">
+                    <i class="fas fa-robot mr-1"></i> Launch Autonomous Reflection Pipeline
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 3: Reflection Monitor -->
+    <div class="card card-shadow mb-4 d-none" id="step-card-3">
+        <div class="card-header bg-white font-weight-bold d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-sync-alt fa-spin mr-2 text-primary" id="pipeline-spinner"></i> Step 3: Multi-Agent Reflection Progress</span>
+            <span class="badge badge-info" id="pipeline-status-badge">Processing...</span>
+        </div>
+        <div class="card-body">
+            <div class="progress mb-3" style="height: 20px;">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="pipeline-progress-bar" style="width: 15%">15%</div>
+            </div>
+            <div class="telemetry-box mb-3" id="telemetry-log">
+                [00:00] Initializing Actor-Critic reflection orchestrator...
+            </div>
+            <div id="reflection-results" class="d-none">
+                <div class="alert alert-success">
+                    <h5 class="alert-heading font-weight-bold mb-1"><i class="fas fa-check-circle mr-1"></i> Quality Audit Complete!</h5>
+                    <p class="mb-0" id="results-summary-text">Test suite refined and validated.</p>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-primary" onclick="goToStep(4)">
+                        Proceed to Exports & Execution <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Step 4: Enterprise Sync & Live Execution -->
+    <div class="card card-shadow mb-4 d-none" id="step-card-4">
+        <div class="card-header bg-white font-weight-bold">
+            <i class="fas fa-share-alt mr-2 text-primary"></i> Step 4: Enterprise TMS Export & Live Execution
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- Jira / TestRail Exporter -->
+                <div class="col-md-6 mb-3">
+                    <div class="border rounded p-3 h-100">
+                        <h5 class="font-weight-bold mb-2"><i class="fab fa-jira text-primary mr-1"></i> Jira / Xray Sync</h5>
+                        <p class="text-muted small">Export verified test scenarios to Jira project issues with acceptance criteria.</p>
+                        <div class="form-group">
+                            <label class="small font-weight-bold">Jira Project Key:</label>
+                            <input type="text" class="form-control form-control-sm" id="jira-project-key" value="QA">
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="exportTMS('jira')">
+                            <i class="fas fa-download mr-1"></i> Download Jira JSON
+                        </button>
+                    </div>
+                </div>
+
+                <!-- XMind MindMap -->
+                <div class="col-md-6 mb-3">
+                    <div class="border rounded p-3 h-100">
+                        <h5 class="font-weight-bold mb-2"><i class="fas fa-sitemap text-success mr-1"></i> Visual XMind MindMap</h5>
+                        <p class="text-muted small">Export structured mindmap tree organizing test suites by priority and steps.</p>
+                        <div class="mt-4">
+                            <button type="button" class="btn btn-sm btn-outline-success mr-2" onclick="exportTMS('xmind')">
+                                <i class="fas fa-file-archive mr-1"></i> Download .xmind File
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportTMS('markdown')">
+                                <i class="fas fa-file-alt mr-1"></i> Download Mindmap Markdown
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Cases Table Preview -->
+            <div class="mt-3">
+                <h5 class="font-weight-bold">Approved Test Cases Preview (<span id="preview-count">0</span>):</h5>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th style="width: 80px;">Priority</th>
+                                <th>Scenario Description</th>
+                                <th>Test Steps</th>
+                                <th>Expected Results</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cases-table-body">
+                            <tr><td colspan="5" class="text-center text-muted">No test cases generated yet.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentCases = [];
+    let currentTaskId = null;
+
+    function goToStep(step) {
+        for (let i = 1; i <= 4; i++) {
+            const card = document.getElementById(`step-card-${i}`);
+            const nav = document.getElementById(`step-nav-${i}`);
+            if (card) {
+                if (i === step) card.classList.remove('d-none');
+                else card.classList.add('d-none');
+            }
+            if (nav) {
+                if (i === step) {
+                    nav.classList.add('active');
+                } else if (i < step) {
+                    nav.classList.remove('active');
+                    nav.classList.add('completed');
+                } else {
+                    nav.classList.remove('active', 'completed');
+                }
+            }
+        }
+    }
+
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    function logTelemetry(msg) {
+        const box = document.getElementById('telemetry-log');
+        const ts = new Date().toLocaleTimeString();
+        box.textContent += `\n[${ts}] ${msg}`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function startActorCriticPipeline() {
+        const req = document.getElementById('pipeline-requirements').value.trim();
+        if (!req) {
+            alert('Please provide requirements before starting the pipeline.');
+            return;
+        }
+
+        goToStep(3);
+        const minScore = parseFloat(document.getElementById('min-score').value) || 85.0;
+        const maxIter = parseInt(document.getElementById('max-iterations').value) || 2;
+        const actorModel = document.getElementById('actor-model').value;
+
+        logTelemetry(`Starting Actor-Critic pipeline with model=${actorModel}, min_score=${minScore}, max_iterations=${maxIter}`);
+
+        fetch('/pipeline/run/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                requirements: req,
+                min_score: minScore,
+                max_iterations: maxIter,
+                llm_provider: actorModel
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                currentCases = data.final_cases || [];
+                document.getElementById('pipeline-progress-bar').style.width = '100%';
+                document.getElementById('pipeline-progress-bar').textContent = '100%';
+                document.getElementById('pipeline-spinner').classList.remove('fa-spin');
+                document.getElementById('pipeline-status-badge').textContent = 'Completed';
+                document.getElementById('pipeline-status-badge').className = 'badge badge-success';
+                
+                logTelemetry(`Completed! Final Score: ${data.final_score}/100 across ${data.iterations_run} iteration(s). Converged: ${data.converged}`);
+                document.getElementById('results-summary-text').textContent = 
+                    `Achieved quality score ${data.final_score}/100 with ${currentCases.length} validated test cases.`;
+                document.getElementById('reflection-results').classList.remove('d-none');
+                renderCasesTable();
+            } else {
+                logTelemetry(`Error: ${data.message || 'Pipeline failed'}`);
+                document.getElementById('pipeline-status-badge').textContent = 'Failed';
+                document.getElementById('pipeline-status-badge').className = 'badge badge-danger';
+                alert('Pipeline failed: ' + (data.message || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            logTelemetry(`Network Error: ${err}`);
+            alert('Request failed: ' + err);
+        });
+    }
+
+    function renderCasesTable() {
+        const tbody = document.getElementById('cases-table-body');
+        document.getElementById('preview-count').textContent = currentCases.length;
+        if (!currentCases.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No test cases generated.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = currentCases.map((tc, idx) => {
+            const rawPrio = tc.priority || 'P2';
+            const prio = escapeHtml(rawPrio);
+            const badgeClass = rawPrio === 'P0' ? 'badge-danger' : (rawPrio === 'P1' ? 'badge-warning' : 'badge-secondary');
+            const steps = Array.isArray(tc.test_steps)
+                ? tc.test_steps.map(s => escapeHtml(s)).join('<br>')
+                : escapeHtml(tc.test_steps);
+            const expected = Array.isArray(tc.expected_results)
+                ? tc.expected_results.map(r => escapeHtml(r)).join('<br>')
+                : escapeHtml(tc.expected_results);
+            const title = escapeHtml(tc.title || tc.description || 'Test Case');
+
+            return `
+                <tr>
+                    <td>${idx + 1}</td>
+                    <td><span class="badge ${badgeClass}">${prio}</span></td>
+                    <td><strong>${title}</strong></td>
+                    <td><small>${steps || '-'}</small></td>
+                    <td><small>${expected || '-'}</small></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function exportTMS(target) {
+        if (!currentCases.length) {
+            alert('No test cases available to export.');
+            return;
+        }
+
+        const projectKey = document.getElementById('jira-project-key').value.trim() || 'QA';
+
+        fetch('/pipeline/export/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                target: target,
+                test_cases: currentCases,
+                project_key: projectKey
+            })
+        })
+        .then(response => {
+            if (target === 'xmind') {
+                return response.blob().then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'codebrain_test_suite.xmind';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                });
+            } else {
+                return response.json().then(data => {
+                    if (data.download_content) {
+                        const blob = new Blob([data.download_content], { type: data.content_type || 'application/json' });
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = data.filename || 'export.json';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    } else {
+                        alert(data.message || 'Export generated successfully');
+                    }
+                });
+            }
+        })
+        .catch(err => {
+            alert('Export request failed: ' + err);
+        });
+    }
+</script>
+{% endblock %}
