@@ -1,4 +1,5 @@
 import os
+import json
 from django.http import JsonResponse
 from apps.utils.logger_manager import get_logger
 from apps.ai_agents.prd_analyzer.analyser import PrdAnalyserAgent
@@ -7,7 +8,6 @@ from apps.llm import LLMServiceFactory
 from django.shortcuts import render
 from apps.utils.file_transfer import word_to_markdown
 from apps.llm.utils import get_agent_llm_configs
-
 
 llm_config = getattr(settings, 'LLM_PROVIDERS', {})
 DEFAULT_PROVIDER, PROVIDERS = get_agent_llm_configs("prd_analyzer")
@@ -20,56 +20,92 @@ llm_service = LLMServiceFactory.create(
 logger = get_logger(__name__)
 
 
+def extract_content_from_file(uploaded_file, file_type: str) -> str:
+    """Extract plain text / markdown from uploaded document."""
+    file_type = file_type.lower()
+    save_dir = os.path.join(settings.BASE_DIR, 'prd')
+    os.makedirs(save_dir, exist_ok=True)
+    temp_path = os.path.join(save_dir, uploaded_file.name)
+
+    if file_type in ['.md', '.txt']:
+        raw_bytes = uploaded_file.read()
+        try:
+            return raw_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            return raw_bytes.decode('latin-1', errors='replace')
+
+    elif file_type == '.pdf':
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(uploaded_file)
+            pages = [page.extract_text() or "" for page in reader.pages]
+            extracted = "\n\n".join(pages).strip()
+            if not extracted:
+                raise ValueError("PDF contains no extractable text or is image-based.")
+            return extracted
+        except Exception as e:
+            logger.error(f"Failed to extract PDF text: {str(e)}", exc_info=True)
+            raise ValueError(f"Could not extract text from PDF: {str(e)}")
+
+    elif file_type == '.docx':
+        with open(temp_path, 'wb+') as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
+        md_path = temp_path.replace('.docx', '.md')
+        word_to_markdown(temp_path, md_path)
+        with open(md_path, 'r', encoding='utf-8') as f:
+            return f.read()
+
+    else:
+        raise ValueError(f"Unsupported file format '{file_type}'. Supported: .docx, .md, .txt, .pdf")
+
+
 def prd_analyzer(request):
-    """Extract test points and test scenarios from PRD document"""
+    """Extract test points and test scenarios from PRD document or raw text"""
     if request.method == 'GET':
         return render(request, 'prd_analyzer.html')
     elif request.method == 'POST':
-        if 'single_file' in request.FILES:
+        prd_content = ""
+
+        # Check for raw text submission (direct paste)
+        raw_text = request.POST.get('raw_text', '').strip()
+        if not raw_text and request.body:
+            try:
+                body_data = json.loads(request.body)
+                raw_text = body_data.get('raw_text', '').strip()
+            except Exception:
+                pass
+
+        if raw_text:
+            prd_content = raw_text
+            logger.info(f"Received raw text PRD input of {len(prd_content)} characters")
+        elif 'single_file' in request.FILES:
             uploaded_file = request.FILES['single_file']
-            file_path = os.path.join(settings.MEDIA_ROOT, uploaded_file.name)
-            
-            if os.path.exists(file_path):
-                return JsonResponse({
-                    'success': False,
-                    'error': 'File already exists'
-                })
-            logger.info(f"Uploaded file: {uploaded_file}")
-            if not uploaded_file:
-                return JsonResponse({'success': False, 'error': 'No file received'})
-            file_type = os.path.splitext(uploaded_file.name)[1]
-            if file_type != '.docx':
-                return JsonResponse({'success': False, 'error': 'Unsupported file type'})
-            logger.info(f"Uploaded file type: {file_type}")
-            logger.info(f"Uploaded file name: {uploaded_file.name}")
-            
-            # Save temporary file
-            save_dir = 'prd/'
-            os.makedirs(save_dir, exist_ok=True)
-            file_path = os.path.join(save_dir, f"{uploaded_file.name}")
-            with open(file_path, 'wb+') as f:
-                for chunk in uploaded_file.chunks():
-                    f.write(chunk)
-            logger.info(f"Temporary file saved successfully, path: {file_path}")
-            
-            # Convert file
-            word_to_markdown(file_path, file_path.replace('.docx', '.md'))
-            with open(file_path.replace('.docx', '.md'), 'r', encoding='utf-8') as f:
-                prd_content = f.read()
-            logger.info(f"PRD content: {prd_content}")
-            
+            file_type = os.path.splitext(uploaded_file.name)[1].lower()
+            logger.info(f"Processing uploaded file: {uploaded_file.name} ({file_type})")
+            try:
+                prd_content = extract_content_from_file(uploaded_file, file_type)
+            except Exception as e:
+                logger.error(f"Error parsing uploaded file: {str(e)}")
+                return JsonResponse({'success': False, 'error': str(e)}, status=400)
+        else:
+            return JsonResponse({'success': False, 'error': 'No file or text content received'}, status=400)
+
+        if not prd_content.strip():
+            return JsonResponse({'success': False, 'error': 'PRD content is empty'}, status=400)
+
+        try:
             analyser = PrdAnalyserAgent(llm_service=llm_service)
             result = analyser.analyse(prd_content)
             return JsonResponse({
                 'success': True,
                 'result': result
             })
-        else:
-            return JsonResponse({
-                'success': False,
-                'error': 'No file received'
-            })
-        return JsonResponse({
-            'success': False,
-            'error': 'Unsupported request method'
-        })
+        except Exception as e:
+            logger.error(f"PRD Analysis failed: {str(e)}", exc_info=True)
+            return JsonResponse({'success': False, 'error': f"Analysis error: {str(e)}"}, status=500)
+
+    return JsonResponse({
+        'success': False,
+        'error': 'Unsupported request method'
+    }, status=405)

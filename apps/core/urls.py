@@ -14,5 +14,6 @@ urlpatterns = [
     path('api/add-knowledge/', views.add_knowledge, name='add_knowledge'),
     path('api/knowledge-list/', views.knowledge_list, name='knowledge_list'),
     path('api/search-knowledge/', views.search_knowledge, name='search_knowledge'),   
+    path('api/update-status/', views.update_test_case_status, name='update_test_case_status'),
     path('api/stream-logs/', stream_logs, name='stream_logs'),
 ]

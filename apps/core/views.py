@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
 
-from .models import TestCase, KnowledgeBase
+from .models import TestCase, KnowledgeBase, TestCaseReview
 from ..knowledge.service import get_knowledgeService_instance
 
 from django.conf import settings
@@ -329,3 +329,33 @@ def upload_single_file(request):
         'success': False,
         'error': 'Unsupported request method'
     })
+
+
+@require_http_methods(["POST"])
+def update_test_case_status(request):
+    """Update test case review status and record comments if provided"""
+    try:
+        data = json.loads(request.body)
+        test_case_id = data.get('test_case_id')
+        status = data.get('status')
+        comments = data.get('comments', '')
+
+        if not test_case_id or not status:
+            return JsonResponse({'success': False, 'message': 'Missing test_case_id or status'}, status=400)
+
+        test_case = TestCase.objects.get(id=test_case_id)
+        test_case.status = status
+        test_case.save()
+
+        if comments:
+            TestCaseReview.objects.create(
+                test_case=test_case,
+                review_comments=comments
+            )
+
+        return JsonResponse({'success': True, 'message': 'Status updated successfully'})
+    except TestCase.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Test case not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Failed to update test case status: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)

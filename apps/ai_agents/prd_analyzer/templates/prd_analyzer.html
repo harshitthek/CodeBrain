@@ -127,18 +127,39 @@
     <h4 class="mb-4">Test Points & Scenarios Analysis</h4>
     <form method="post" enctype="multipart/form-data" id="uploadForm" onsubmit="return handleSubmit(event)">
         {% csrf_token %}
-        <div class="upload-area" id="uploadArea">
-            <input type="file" name="single_file" id="single_file" style="display: none;" onchange="updateFileName(this)">
-            <button type="button" class="btn btn-primary file-input-button" id="fileInputButton" onclick="document.getElementById('single_file').click()">
-                Select File to Analyze
-            </button>
-            <div id="selected-file" class="selected-file"></div>
-            <div id="uploadStatus" style="margin-top: 10px; color: #666;"></div>
-            <div class="upload-hint">
-                Drag and drop file here or click to select. Only .docx format is supported.<br>
-                <span style="color: #dc3545;">Tip: Documents exported from wikis are often in .doc format; please convert them to .docx first.</span>
+        <ul class="nav nav-tabs mb-3" id="inputMethodTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="upload-tab" data-toggle="tab" href="#uploadPane" role="tab">Upload Document</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="paste-tab" data-toggle="tab" href="#pastePane" role="tab">Paste Text Directly</a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="inputMethodTabContent">
+            <div class="tab-pane fade show active" id="uploadPane" role="tabpanel">
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" name="single_file" id="single_file" accept=".docx,.md,.txt,.pdf" style="display: none;" onchange="updateFileName(this)">
+                    <button type="button" class="btn btn-primary file-input-button" id="fileInputButton" onclick="document.getElementById('single_file').click()">
+                        Select File to Analyze
+                    </button>
+                    <div id="selected-file" class="selected-file"></div>
+                    <div id="uploadStatus" style="margin-top: 10px; color: #666;"></div>
+                    <div class="upload-hint">
+                        Drag and drop file here or click to select. Supported formats: <strong>.docx, .md, .txt, .pdf</strong><br>
+                        <span class="text-muted">Tip: Plain Markdown (.md) or text (.txt) files provide the fastest parsing speed.</span>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="pastePane" role="tabpanel">
+                <div class="form-group my-3">
+                    <label for="raw_text"><strong>Requirement or PRD Content:</strong></label>
+                    <textarea class="form-control" id="raw_text" name="raw_text" rows="10" placeholder="Paste product requirements, user stories, or functional specifications here..."></textarea>
+                    <small class="form-text text-muted">You can paste formatted Markdown or plain text directly.</small>
+                </div>
             </div>
         </div>
+
         <div class="submit-container">
             <button type="submit" class="btn btn-success submit-button" id="submitBtn">Start Analysis</button>
         </div>
@@ -233,22 +254,25 @@ function handleDrop(e) {
     handleFiles(files);
 }
 
+function isSupportedExtension(fileName) {
+    const lower = fileName.toLowerCase();
+    return ['.docx', '.md', '.txt', '.pdf'].some(ext => lower.endsWith(ext));
+}
+
 function handleFiles(files) {
     if (files.length > 0) {
         const file = files[0];
         const statusDiv = document.getElementById('uploadStatus');
         
         // Check file type
-        if (!file.name.toLowerCase().endsWith('.docx')) {
-            statusDiv.textContent = `Only .docx files are supported. Selected file: ${file.name}`;
+        if (!isSupportedExtension(file.name)) {
+            statusDiv.textContent = `Unsupported format. Supported: .docx, .md, .txt, .pdf. Selected: ${file.name}`;
             statusDiv.style.color = '#dc3545';
             
-            // Clear file input and display
             const fileInput = document.getElementById('single_file');
             fileInput.value = '';
             document.getElementById('selected-file').style.display = 'none';
             document.getElementById('selected-file').textContent = '';
-            
             return;
         }
 
@@ -273,20 +297,15 @@ function updateFileName(input) {
     if (input.files && input.files[0]) {
         const fileName = input.files[0].name;
         
-        // Check file type
-        if (!fileName.toLowerCase().endsWith('.docx')) {
-            // Unsupported file type
+        if (!isSupportedExtension(fileName)) {
             selectedFile.style.display = 'none';
             selectedFile.textContent = '';
-            statusDiv.textContent = `Only .docx files are supported. Selected file: ${fileName}`;
+            statusDiv.textContent = `Unsupported format. Supported: .docx, .md, .txt, .pdf. Selected: ${fileName}`;
             statusDiv.style.color = '#dc3545';
-            
-            // Clear file input
             input.value = '';
             return;
         }
         
-        // Supported file type
         selectedFile.style.display = 'block';
         selectedFile.textContent = 'Selected file: ' + fileName;
         statusDiv.textContent = '';
@@ -385,18 +404,21 @@ async function handleSubmit(event) {
     
     const form = event.target;
     const fileInput = form.querySelector('input[type="file"]');
+    const rawTextInput = document.getElementById('raw_text');
+    const rawText = rawTextInput ? rawTextInput.value.trim() : '';
     const statusDiv = document.getElementById('uploadStatus');
     
-    if (!fileInput.files || !fileInput.files[0]) {
-        statusDiv.textContent = 'Please select a file to upload first.';
+    const hasFile = fileInput.files && fileInput.files[0];
+    if (!hasFile && !rawText) {
+        statusDiv.textContent = 'Please select a document or paste requirements text first.';
         statusDiv.style.color = '#dc3545';
         return false;
     }
 
     // Set processing state
     setProcessingState(true);
-    statusDiv.textContent = 'Parsing file, please wait...';
-    statusDiv.style.color = '#dc3545';
+    statusDiv.textContent = hasFile ? 'Analyzing uploaded document, please wait...' : 'Analyzing pasted requirements, please wait...';
+    statusDiv.style.color = '#007bff';
     statusDiv.style.fontWeight = 'bold';
 
     try {

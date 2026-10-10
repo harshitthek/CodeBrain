@@ -4,6 +4,7 @@ import json
 from apps.llm.base import BaseLLMService
 from apps.knowledge.service import KnowledgeService
 from .prompts import TestCaseGeneratorPrompt
+from .schemas import extract_and_parse_test_cases
 from apps.utils.logger_manager import get_logger
 import re
 
@@ -46,14 +47,16 @@ class TestCaseGeneratorAgent:
             result = response.content
             self.logger.info(f"Raw LLM response: \n{'='*50}\n{result}\n{'='*50}")
             
-            json_str = self._extract_json_from_response(result)
-            if not json_str:
-                raise ValueError("Unable to extract valid JSON data from response")
-                
-            test_cases = json.loads(json_str)
-            self.logger.info(f"Test case count before _validate_test_cases: {len(test_cases)}")
-            
-            valid_test_cases = self._validate_test_cases(test_cases)
+            try:
+                valid_test_cases = extract_and_parse_test_cases(result)
+            except Exception as parse_err:
+                self.logger.warning(f"Schema parser fallback: {str(parse_err)}")
+                json_str = self._extract_json_from_response(result)
+                if not json_str:
+                    raise parse_err
+                test_cases = json.loads(json_str)
+                valid_test_cases = self._validate_test_cases(test_cases)
+
             if len(valid_test_cases) > self.case_count:
                 self.logger.warning(f"LLM overgenerated: expected {self.case_count}, got {len(valid_test_cases)}, auto-truncating.")
                 valid_test_cases = valid_test_cases[: self.case_count]
@@ -87,14 +90,18 @@ class TestCaseGeneratorAgent:
             result = response.content
             self.logger.info(f"Raw LLM response: \n{'='*50}\n{result}\n{'='*50}")
             
-            json_str = self._extract_json_from_response(result)
-            if not json_str:
-                raise ValueError("Unable to extract valid JSON data from response")
-                
-            test_cases = json.loads(json_str)
-            self.logger.info(f"Test case count before _validate_test_cases: {len(test_cases)}")
-            
-            valid_test_cases = self._validate_test_cases(test_cases)
+            try:
+                valid_test_cases = extract_and_parse_test_cases(result)
+            except Exception as parse_err:
+                self.logger.warning(f"Schema parser fallback: {str(parse_err)}")
+                json_str = self._extract_json_from_response(result)
+                if not json_str:
+                    raise parse_err
+                test_cases = json.loads(json_str)
+                valid_test_cases = self._validate_test_cases(test_cases)
+
+            if len(valid_test_cases) > self.case_count:
+                valid_test_cases = valid_test_cases[: self.case_count]
             return valid_test_cases
             
         except Exception as e:

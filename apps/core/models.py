@@ -80,7 +80,9 @@ class TestCaseReview(models.Model):
         User, 
         on_delete=models.CASCADE, 
         related_name='reviews',
-        verbose_name="Reviewer"
+        verbose_name="Reviewer",
+        null=True,
+        blank=True
     )
     review_comments = models.TextField(verbose_name="Review Comments")
     review_date = models.DateTimeField(auto_now_add=True, verbose_name="Review Date")
