@@ -7,11 +7,12 @@
   --bg-row-hover: #E8E5DD;
   --ink-primary: #262523;
   --ink-secondary: #57554F;
-  --ink-muted: #87847C;
+  --ink-muted: #625F58;
   --ink-ghost-dot: #DFDCD4;
   --rule-heavy: #262523;
   --rule-hairline: #D5D2C9;
-  --signal-vermilion: #D95338;
+  --signal-vermilion: #B33920;
+  --signal-vermilion-mark: #D95338;
   --signal-forest: #2A6F4E;
   --font-mono-tech: 'IBM Plex Mono', 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }

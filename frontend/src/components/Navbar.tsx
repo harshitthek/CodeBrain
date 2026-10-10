@@ -67,27 +67,28 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate }) => {
           onClick={() => onNavigate('hero')}
           className="flex items-center gap-3 bg-transparent border-none p-0 cursor-pointer text-left group"
         >
-          <span className="meta-label text-[#262523] font-medium tracking-[0.18em] group-hover:text-[#D95338] transition-colors">
+          <span className="meta-label text-[#262523] font-medium tracking-[0.18em] group-hover:text-[#B33920] transition-colors">
             CODEBRAIN / OPEN SOURCE QA
           </span>
         </button>
 
         {/* Center: 5 Individual Page Tabs */}
-        <nav className="hidden lg:flex items-center gap-1">
+        <nav aria-label="Primary sheet navigation" className="hidden lg:flex items-center gap-1">
           {SHEET_PAGES.map((item) => {
             const isActive = activePage === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => onNavigate(item.id)}
                 className={`cursor-pointer px-3 py-1.5 text-[11px] tracking-[0.14em] uppercase transition-colors flex items-center gap-1.5 border ${
                   isActive
                     ? 'bg-[#262523] text-[#F2F0EC] border-[#262523] font-semibold'
-                    : 'bg-transparent text-[#87847C] border-transparent hover:text-[#262523] hover:border-[#D5D2C9]'
+                    : 'bg-transparent text-[#625F58] border-transparent hover:text-[#262523] hover:border-[#D5D2C9]'
                 }`}
               >
-                <span className={isActive ? 'text-[#D95338]' : 'text-[#87847C]'}>
+                <span className={isActive ? 'text-[#D95338]' : 'text-[#625F58]'}>
                   {item.num}
                 </span>
                 <span>{item.label}</span>
@@ -96,13 +97,22 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate }) => {
           })}
         </nav>
 
-        {/* Right: Active Sheet Indicator + Datum Crosshair */}
-        <div className="flex items-center gap-4">
+        {/* Right: GitHub Repo Link + Active Sheet Indicator + Datum Crosshair */}
+        <div className="flex items-center gap-3.5">
+          <a
+            href="https://github.com/harshitthek/CodeBrain"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden sm:inline-flex text-[11px] tracking-[0.14em] uppercase text-[#262523] hover:text-[#B33920] no-underline font-medium border border-[#262523] px-2.5 py-1 bg-[#EAE7E0]/70 transition-colors"
+          >
+            GITHUB REPO ↗
+          </a>
+
           {activePage !== 'pipeline' && (
             <button
               type="button"
               onClick={() => onNavigate('pipeline')}
-              className="hidden sm:inline-flex text-[11px] tracking-[0.15em] uppercase text-[#D95338] hover:text-[#262523] bg-transparent border-none cursor-pointer font-medium"
+              className="hidden md:inline-flex text-[11px] tracking-[0.15em] uppercase text-[#B33920] hover:text-[#262523] bg-transparent border-none cursor-pointer font-medium"
             >
               [RUN SUITE →]
             </button>
@@ -147,7 +157,10 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate }) => {
       </div>
 
       {/* Mobile / Tablet Page Switcher Strip */}
-      <div className="lg:hidden border-t border-[#D5D2C9] bg-[#EAE7E0]/70 overflow-x-auto">
+      <nav
+        aria-label="Mobile sheet navigation"
+        className="lg:hidden border-t border-[#D5D2C9] bg-[#EAE7E0]/70 overflow-x-auto"
+      >
         <div className="max-w-[1180px] mx-auto px-5 flex items-center gap-1 py-1.5">
           {SHEET_PAGES.map((item) => {
             const isActive = activePage === item.id;
@@ -155,6 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate }) => {
               <button
                 key={item.id}
                 type="button"
+                aria-current={isActive ? 'page' : undefined}
                 onClick={() => onNavigate(item.id)}
                 className={`cursor-pointer px-2.5 py-1 text-[10px] tracking-[0.12em] uppercase whitespace-nowrap border ${
                   isActive
@@ -162,13 +176,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate }) => {
                     : 'bg-transparent text-[#57554F] border-transparent'
                 }`}
               >
-                <span className="text-[#D95338] mr-1">{item.num}</span>
+                <span className={isActive ? 'text-[#D95338] mr-1' : 'text-[#B33920] mr-1'}>
+                  {item.num}
+                </span>
                 {item.label}
               </button>
             );
           })}
         </div>
-      </div>
+      </nav>
     </header>
   );
 };

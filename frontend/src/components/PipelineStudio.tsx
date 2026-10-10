@@ -258,10 +258,12 @@ export const PipelineStudio: React.FC = () => {
   const [activeView, setActiveView] = useState<'ledger' | 'iterations' | 'schema'>('ledger');
 
   const handlePresetSelect = async (key: 'checkout' | 'oauth' | 'raft') => {
+    if (isRunning) return;
     setActivePreset(key);
     const nextReq = PRESET_SPECS[key].content;
     setRequirements(nextReq);
     setIsRunning(true);
+    setResult(null);
     setProgressLog([`[00:00.10] Loading SPEC ${PRESET_SPECS[key].code} (${PRESET_SPECS[key].label}) -> Running ActorCriticReflectionEngine...`]);
     setProgressPercent(20);
 
@@ -277,13 +279,18 @@ export const PipelineStudio: React.FC = () => {
         }
       );
       setResult(res);
+    } catch (err: any) {
+      setResult(null);
+      setProgressLog((prev) => [...prev, `[ERROR] ${err.message || 'Execution failed'}`]);
     } finally {
       setIsRunning(false);
     }
   };
 
   const handleRunReflection = async () => {
+    if (isRunning) return;
     setIsRunning(true);
+    setResult(null);
     setProgressLog(['[00:00.10] POST /pipeline/run/ -> Invoking ActorCriticReflectionEngine.run()...']);
     setProgressPercent(15);
 
@@ -301,6 +308,7 @@ export const PipelineStudio: React.FC = () => {
       setResult(res);
       setActiveView('ledger');
     } catch (err: any) {
+      setResult(null);
       setProgressLog((prev) => [...prev, `[ERROR] ${err.message || 'Execution failed'}`]);
     } finally {
       setIsRunning(false);
@@ -326,6 +334,22 @@ export const PipelineStudio: React.FC = () => {
   };
 
   const latestRubric = result?.iterations?.[result.iterations.length - 1]?.rubric;
+
+  const schematicStatusLabel = isRunning
+    ? '● EXECUTING PASSES...'
+    : !result
+    ? '● STANDBY'
+    : result.converged
+    ? `● CONVERGED AT PASS 0${result.total_iterations} (${result.highest_score.toFixed(1)} / 100)`
+    : `● NOT CONVERGED AT PASS 0${result.total_iterations} (${result.highest_score.toFixed(1)} / 100)`;
+
+  const stateReadout = isRunning
+    ? 'REFLECTING'
+    : !result
+    ? 'STANDBY'
+    : result.converged
+    ? 'CONVERGED'
+    : 'NOT CONVERGED';
 
   return (
     <section id="pipeline" className="relative w-full py-12 md:py-16">
@@ -354,7 +378,7 @@ export const PipelineStudio: React.FC = () => {
           <code className="text-[#262523] font-medium">ActorCriticReflectionEngine</code> pairs{' '}
           <code className="text-[#262523]">TestCaseGeneratorAgent</code> (Actor) with{' '}
           <code className="text-[#262523]">TestCaseReviewerAgent</code> (Critic). When Pass 01 scores below{' '}
-          <code className="text-[#D95338] font-medium">min_score ({minScore}.0)</code>,{' '}
+          <code className="text-[#B33920] font-medium">min_score ({minScore}.0)</code>,{' '}
           <code className="text-[#262523]">_build_refinement_input()</code> feeds itemized weaknesses and missing edge scenarios into Pass 02 while tracking the monotonic high-water suite across iterations.
         </p>
 
@@ -364,14 +388,22 @@ export const PipelineStudio: React.FC = () => {
             <span className="meta-label text-[#262523] font-semibold">
               CLOSED-LOOP REFLECTION TOPOLOGY // GENERATOR ⇄ REVIEWER CONVERGENCE
             </span>
-            <span className="meta-label text-[#D95338]">
-              {isRunning ? '● EXECUTING PASSES...' : '● CONVERGED AT PASS 02 (93.5 / 100)'}
+            <span
+              className={`meta-label font-semibold ${
+                isRunning || (result && !result.converged)
+                  ? 'text-[#B33920]'
+                  : result?.converged
+                  ? 'text-[#2A6F4E]'
+                  : 'text-[#625F58]'
+              }`}
+            >
+              {schematicStatusLabel}
             </span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-stretch text-[11px]">
             <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-3 flex flex-col justify-between">
-              <div className="text-[10px] text-[#87847C] uppercase tracking-wider">STAGE 01 // INPUT</div>
+              <div className="text-[10px] text-[#625F58] uppercase tracking-wider">STAGE 01 // INPUT</div>
               <div className="font-semibold text-[#262523] mt-1">PRD & Spec Ingestion</div>
               <div className="text-[10px] text-[#57554F] mt-1">
                 <code>prd_analyzer</code> (.docx pypandoc / .md / .txt)
@@ -389,8 +421,8 @@ export const PipelineStudio: React.FC = () => {
               </div>
             </div>
 
-            <div className="border border-[#D95338] bg-[#F2F0EC] p-3 flex flex-col justify-between">
-              <div className="text-[10px] text-[#D95338] uppercase tracking-wider font-semibold">
+            <div className="border border-[#B33920] bg-[#F2F0EC] p-3 flex flex-col justify-between">
+              <div className="text-[10px] text-[#B33920] uppercase tracking-wider font-semibold">
                 STAGE 03 // CRITIC ⇄ LOOP
               </div>
               <div className="font-semibold text-[#262523] mt-1">TestCaseReviewerAgent</div>
@@ -408,7 +440,7 @@ export const PipelineStudio: React.FC = () => {
             </div>
 
             <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-3 flex flex-col justify-between">
-              <div className="text-[10px] text-[#87847C] uppercase tracking-wider">STAGE 05 // SYNC</div>
+              <div className="text-[10px] text-[#625F58] uppercase tracking-wider">STAGE 05 // SYNC</div>
               <div className="font-semibold text-[#262523] mt-1">Enterprise TMS Export</div>
               <div className="text-[10px] text-[#57554F] mt-1">
                 Jira · TestRail · XMind (.xmind) · JUnit XML · XLSX
@@ -427,7 +459,7 @@ export const PipelineStudio: React.FC = () => {
               <span className="meta-label text-[#262523] font-medium">
                 01 / REQUIREMENT SPECIFICATION
               </span>
-              <span className="meta-label text-[#D95338]">
+              <span className="meta-label text-[#B33920]">
                 .DOCX · .MD · .TXT
               </span>
             </div>
@@ -441,8 +473,9 @@ export const PipelineStudio: React.FC = () => {
                   <button
                     key={key}
                     type="button"
+                    disabled={isRunning}
                     onClick={() => handlePresetSelect(key)}
-                    className={`p-2.5 text-left border cursor-pointer transition-colors ${
+                    className={`p-2.5 text-left border cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                       isSelected
                         ? 'bg-[#262523] text-[#F2F0EC] border-[#262523]'
                         : 'bg-[#EAE7E0] text-[#57554F] border-[#D5D2C9] hover:border-[#262523]'
@@ -450,7 +483,7 @@ export const PipelineStudio: React.FC = () => {
                   >
                     <div
                       className={`text-[10px] tracking-[0.14em] ${
-                        isSelected ? 'text-[#D95338]' : 'text-[#87847C]'
+                        isSelected ? 'text-[#D95338]' : 'text-[#625F58]'
                       }`}
                     >
                       SPEC {spec.code}
@@ -487,16 +520,16 @@ export const PipelineStudio: React.FC = () => {
                 >
                   <option value="deepseek">deepseek (DeepSeekChatModel)</option>
                   <option value="qwen">qwen (QwenChatModel)</option>
-                  <option value="openai">openai (gpt-4o-mini)</option>
-                  <option value="groq">groq (Llama-3.3-70B)</option>
-                  <option value="ollama">ollama (Local 11434/v1)</option>
+                  <option value="openai">openai (ChatOpenAI)</option>
+                  <option value="groq">groq (ChatOpenAI)</option>
+                  <option value="ollama">ollama (ChatOpenAI)</option>
                 </select>
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <span className="meta-label">MIN_SCORE HURDLE</span>
-                  <span className="text-[12px] font-semibold text-[#D95338]">
+                  <span className="text-[12px] font-semibold text-[#B33920]">
                     {minScore}.0 / 100
                   </span>
                 </div>
@@ -506,7 +539,7 @@ export const PipelineStudio: React.FC = () => {
                   max={95}
                   value={minScore}
                   onChange={(e) => setMinScore(Number(e.target.value))}
-                  className="w-full accent-[#D95338] cursor-pointer mt-2"
+                  className="w-full accent-[#B33920] cursor-pointer mt-2"
                 />
               </div>
             </div>
@@ -539,7 +572,7 @@ export const PipelineStudio: React.FC = () => {
                   className={`bg-transparent border-none cursor-pointer text-[11px] uppercase tracking-[0.14em] p-0 ${
                     activeView === 'ledger'
                       ? 'text-[#262523] font-semibold underline underline-offset-4'
-                      : 'text-[#87847C] hover:text-[#262523]'
+                      : 'text-[#625F58] hover:text-[#262523]'
                   }`}
                 >
                   02A / CONVERGED SUITE ({result?.best_test_cases.length || 0})
@@ -551,7 +584,7 @@ export const PipelineStudio: React.FC = () => {
                   className={`bg-transparent border-none cursor-pointer text-[11px] uppercase tracking-[0.14em] p-0 ${
                     activeView === 'iterations'
                       ? 'text-[#262523] font-semibold underline underline-offset-4'
-                      : 'text-[#87847C] hover:text-[#262523]'
+                      : 'text-[#625F58] hover:text-[#262523]'
                   }`}
                 >
                   02B / PASS 01 vs PASS 02 DIFF ({result?.total_iterations || 0})
@@ -563,7 +596,7 @@ export const PipelineStudio: React.FC = () => {
                   className={`bg-transparent border-none cursor-pointer text-[11px] uppercase tracking-[0.14em] p-0 ${
                     activeView === 'schema'
                       ? 'text-[#262523] font-semibold underline underline-offset-4'
-                      : 'text-[#87847C] hover:text-[#262523]'
+                      : 'text-[#625F58] hover:text-[#262523]'
                   }`}
                 >
                   02C / PYDANTIC JSON
@@ -574,14 +607,14 @@ export const PipelineStudio: React.FC = () => {
                 STATE:{' '}
                 <span
                   className={
-                    isRunning
-                      ? 'text-[#D95338] font-semibold'
+                    isRunning || (result && !result.converged)
+                      ? 'text-[#B33920] font-semibold'
                       : result?.converged
                       ? 'text-[#2A6F4E] font-semibold'
                       : 'text-[#262523]'
                   }
                 >
-                  {isRunning ? 'REFLECTING' : result ? 'CONVERGED' : 'STANDBY'}
+                  {stateReadout}
                 </span>
               </div>
             </div>
@@ -590,7 +623,7 @@ export const PipelineStudio: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-5 border border-[#D5D2C9] bg-[#EAE7E0] divide-y sm:divide-y-0 sm:divide-x divide-[#D5D2C9]">
               <div className="p-3">
                 <div className="meta-label text-[10px]">BEST SCORE</div>
-                <div className="text-[18px] font-semibold text-[#D95338] mt-0.5">
+                <div className="text-[18px] font-semibold text-[#B33920] mt-0.5">
                   {result ? `${result.highest_score.toFixed(1)}` : isRunning ? `${progressPercent}%` : '--'}
                 </div>
               </div>
@@ -622,7 +655,7 @@ export const PipelineStudio: React.FC = () => {
 
             {/* Live ProgressRegistry / SSELogEmitter Output */}
             <div className="border border-[#D5D2C9] bg-[#EAE7E0] p-3.5 space-y-1.5 max-h-[135px] overflow-y-auto text-[11px]">
-              <div className="flex items-center justify-between text-[#87847C] pb-1 border-b border-[#D5D2C9] uppercase tracking-wider text-[10px]">
+              <div className="flex items-center justify-between text-[#625F58] pb-1 border-b border-[#D5D2C9] uppercase tracking-wider text-[10px]">
                 <span>SSE STREAM // apps/utils/progress_registry.py</span>
                 <span>TASK_CONTEXT: ACTIVE</span>
               </div>
@@ -632,8 +665,8 @@ export const PipelineStudio: React.FC = () => {
                   className={
                     line.includes('[CONVERGED]')
                       ? 'text-[#2A6F4E] font-medium'
-                      : line.includes('[PASS 2]')
-                      ? 'text-[#D95338] font-medium'
+                      : line.includes('[PASS 2]') || line.includes('[ERROR]')
+                      ? 'text-[#B33920] font-medium'
                       : 'text-[#57554F]'
                   }
                 >
@@ -650,7 +683,7 @@ export const PipelineStudio: React.FC = () => {
                     <div key={tc.id || idx} className="p-4 space-y-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-[11px] font-semibold text-[#D95338]">
+                          <span className="text-[11px] font-semibold text-[#B33920]">
                             {String(idx + 1).padStart(2, '0')} // {tc.id}
                           </span>
                           <span className="text-[13px] font-medium text-[#262523]">
@@ -664,7 +697,7 @@ export const PipelineStudio: React.FC = () => {
 
                       <div className="text-[11px] text-[#57554F] pl-4 border-l border-[#D5D2C9] space-y-1">
                         <div>
-                          <span className="text-[#87847C] uppercase">Steps: </span>
+                          <span className="text-[#625F58] uppercase">Steps: </span>
                           {tc.test_steps.join(' → ')}
                         </div>
                         <div>
@@ -695,7 +728,7 @@ export const PipelineStudio: React.FC = () => {
                         className={`font-semibold ${
                           iter.rubric.recommendation === 'Pass'
                             ? 'text-[#2A6F4E]'
-                            : 'text-[#D95338]'
+                            : 'text-[#B33920]'
                         }`}
                       >
                         {iter.rubric.score.toFixed(1)} / 100 [{iter.rubric.recommendation.toUpperCase()}]
@@ -704,7 +737,7 @@ export const PipelineStudio: React.FC = () => {
                     <p className="text-[11px] text-[#57554F]">{iter.rubric.comments}</p>
                     {iter.rubric.weaknesses.length > 0 && (
                       <div className="text-[11px] space-y-1">
-                        <div className="text-[#D95338] uppercase tracking-wider text-[10px]">
+                        <div className="text-[#B33920] uppercase tracking-wider text-[10px]">
                           Critic Identified Weaknesses:
                         </div>
                         {iter.rubric.weaknesses.map((w, wi) => (
@@ -808,7 +841,7 @@ export const PipelineStudio: React.FC = () => {
                   <div key={dm.code} className="p-3.5 space-y-1">
                     <div className="flex items-center justify-between">
                       <span className="text-[12px] font-semibold text-[#262523]">
-                        <span className="text-[#D95338] mr-2">{dm.code}</span>
+                        <span className="text-[#B33920] mr-2">{dm.code}</span>
                         {dm.name}
                       </span>
                     </div>
@@ -832,7 +865,7 @@ export const PipelineStudio: React.FC = () => {
                   <span className="text-[12px] font-semibold text-[#262523]">
                     Pydantic v2 Output Validation & JSON Fence Repair
                   </span>
-                  <span className="text-[10px] text-[#D95338] font-semibold">
+                  <span className="text-[10px] text-[#B33920] font-semibold">
                     schemas.py
                   </span>
                 </div>
@@ -846,7 +879,7 @@ export const PipelineStudio: React.FC = () => {
                   <span className="text-[12px] font-semibold text-[#262523]">
                     PRD Analyzer Concurrent Tempfile & Tab Mode Isolation
                   </span>
-                  <span className="text-[10px] text-[#D95338] font-semibold">
+                  <span className="text-[10px] text-[#B33920] font-semibold">
                     prd_analyzer/views.py
                   </span>
                 </div>

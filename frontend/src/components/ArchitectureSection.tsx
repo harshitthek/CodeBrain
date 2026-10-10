@@ -61,7 +61,7 @@ const LAYERS: LayerInfo[] = [
       {
         name: 'LLMServiceFactory',
         file: 'apps/llm/base.py',
-        detail: 'Instantiates DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom OpenAI-compatible gateways.',
+        detail: 'Instantiates DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom runtime OpenAI-compatible gateways.',
       },
       {
         name: 'ProgressRegistry & SSELogEmitter',
@@ -103,44 +103,37 @@ const LLM_PROVIDERS = [
   {
     provider: 'deepseek',
     className: 'DeepSeekChatModel',
-    defaultModel: 'deepseek-chat',
-    endpoint: 'https://api.deepseek.com/v1',
-    timeout: '60s / 3 retries',
+    defaultModel: 'deepseek-v3.1',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    timeout: 'max_tokens=128000 / temp=0.7',
   },
   {
     provider: 'qwen',
     className: 'QwenChatModel',
-    defaultModel: 'qwen-plus',
+    defaultModel: 'qwen3-max-2025-09-23',
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    timeout: '60s / 3 retries',
+    timeout: 'max_tokens=65000 / temp=0.7',
   },
   {
     provider: 'openai',
-    className: 'OpenAICompatibleChatModel',
+    className: 'ChatOpenAI',
     defaultModel: 'gpt-4o-mini',
     endpoint: 'https://api.openai.com/v1',
-    timeout: '60s / 3 retries',
+    timeout: 'max_tokens=4096 / temp=0.7',
   },
   {
     provider: 'ollama',
-    className: 'OpenAICompatibleChatModel',
-    defaultModel: 'llama3.1:8b',
+    className: 'ChatOpenAI',
+    defaultModel: 'llama3',
     endpoint: 'http://localhost:11434/v1',
-    timeout: '120s / local zero-key',
+    timeout: 'max_tokens=4096 / local zero-key',
   },
   {
     provider: 'groq',
-    className: 'OpenAICompatibleChatModel',
+    className: 'ChatOpenAI',
     defaultModel: 'llama-3.3-70b-versatile',
     endpoint: 'https://api.groq.com/openai/v1',
-    timeout: '30s / LPU low-latency',
-  },
-  {
-    provider: 'custom_openai',
-    className: 'OpenAICompatibleChatModel',
-    defaultModel: 'custom-model',
-    endpoint: 'Configurable vLLM / LiteLLM gateway',
-    timeout: '60s / 3 retries',
+    timeout: 'max_tokens=4096 / temp=0.7',
   },
 ];
 
@@ -189,7 +182,7 @@ export const ArchitectureSection: React.FC = () => {
             SHEET 05B // ARCHITECTURE.MD · PHASES.MD · apps/llm/base.py
           </span>
           <span className="meta-label">
-            4-LAYER STACK · <span className="text-[#262523] font-medium">05 ARCHITECTURAL INVARIANTS</span> · 06 LLM PROVIDERS
+            4-LAYER STACK · <span className="text-[#262523] font-medium">05 ARCHITECTURAL INVARIANTS</span> · 05 CONFIGURED LLM PROVIDERS
           </span>
         </div>
 
@@ -220,7 +213,7 @@ export const ArchitectureSection: React.FC = () => {
                   <div className="flex items-center gap-4">
                     <span
                       className={`text-[13px] font-semibold ${
-                        isActive ? 'text-[#D95338]' : 'text-[#87847C]'
+                        isActive ? 'text-[#B33920]' : 'text-[#625F58]'
                       }`}
                     >
                       LAYER {layer.number}
@@ -233,7 +226,7 @@ export const ArchitectureSection: React.FC = () => {
                     <span className="text-[12px] text-[#57554F] hidden md:inline">
                       {layer.tagline}
                     </span>
-                    <span className="text-[14px] font-semibold text-[#D95338]">
+                    <span className="text-[14px] font-semibold text-[#B33920]">
                       {isActive ? '[−]' : '[+]'}
                     </span>
                   </div>
@@ -246,7 +239,7 @@ export const ArchitectureSection: React.FC = () => {
                         <div className="text-[13px] font-semibold text-[#262523]">
                           {mod.name}
                         </div>
-                        <div className="text-[11px] text-[#D95338]">
+                        <div className="text-[11px] text-[#B33920]">
                           <code>{mod.file}</code>
                         </div>
                         <p className="text-[12px] text-[#57554F] leading-[1.6]">
@@ -265,7 +258,7 @@ export const ArchitectureSection: React.FC = () => {
         <div className="pt-12">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <span className="meta-label text-[#262523] font-semibold">
-              UNIVERSAL LLM PROVIDER MATRIX // apps/llm/base.py (LLMServiceFactory)
+              UNIVERSAL LLM PROVIDER MATRIX // config/settings.py · apps/llm/base.py (LLMServiceFactory)
             </span>
             <span className="meta-label text-[#2A6F4E]">
               CREDENTIAL MASKING: ENABLED (get_all_configs)
@@ -278,14 +271,14 @@ export const ArchitectureSection: React.FC = () => {
               <div className="col-span-4 sm:col-span-3">ADAPTER CLASS</div>
               <div className="col-span-5 sm:col-span-2">DEFAULT MODEL</div>
               <div className="hidden sm:block sm:col-span-3">GATEWAY ENDPOINT</div>
-              <div className="hidden sm:block sm:col-span-2 text-right">POLICY</div>
+              <div className="hidden sm:block sm:col-span-2 text-right">DEFAULTS</div>
             </div>
             {LLM_PROVIDERS.map((p) => (
               <div
                 key={p.provider}
                 className="grid grid-cols-12 gap-2 px-4 py-3 items-center text-[11px] hover:bg-[#F2F0EC] transition-colors"
               >
-                <div className="col-span-3 sm:col-span-2 font-semibold text-[#D95338]">
+                <div className="col-span-3 sm:col-span-2 font-semibold text-[#B33920]">
                   <code>{p.provider}</code>
                 </div>
                 <div className="col-span-4 sm:col-span-3 text-[#262523] truncate">
@@ -297,11 +290,20 @@ export const ArchitectureSection: React.FC = () => {
                 <div className="hidden sm:block sm:col-span-3 text-[#57554F] truncate">
                   <code>{p.endpoint}</code>
                 </div>
-                <div className="hidden sm:block sm:col-span-2 text-right text-[#87847C] text-[10px]">
+                <div className="hidden sm:block sm:col-span-2 text-right text-[#625F58] text-[10px]">
                   {p.timeout}
                 </div>
               </div>
             ))}
+            <div className="px-4 py-3 bg-[#F2F0EC] text-[11px] text-[#57554F] flex flex-wrap items-center justify-between gap-2">
+              <span>
+                <strong className="text-[#262523]">Custom Runtime Providers:</strong> Unconfigured provider names passed to{' '}
+                <code className="text-[#262523]">LLMServiceFactory.create(provider, **config)</code> require a runtime{' '}
+                <code className="text-[#B33920]">model</code> or <code className="text-[#B33920]">base_url</code> override (instantiated via{' '}
+                <code className="text-[#262523]">ChatOpenAI</code>); otherwise the factory logs a warning and falls back to{' '}
+                <code className="text-[#262523]">default_provider (&apos;deepseek&apos;)</code>.
+              </span>
+            </div>
           </div>
         </div>
 
@@ -317,10 +319,10 @@ export const ArchitectureSection: React.FC = () => {
                 <div key={inv.code} className="p-3.5 space-y-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[12px] font-semibold text-[#262523]">
-                      <span className="text-[#D95338] mr-2">{inv.code}</span>
+                      <span className="text-[#B33920] mr-2">{inv.code}</span>
                       {inv.title}
                     </span>
-                    <code className="text-[10px] text-[#87847C]">{inv.module}</code>
+                    <code className="text-[10px] text-[#625F58]">{inv.module}</code>
                   </div>
                   <p className="text-[11px] text-[#57554F] leading-[1.55]">{inv.desc}</p>
                 </div>

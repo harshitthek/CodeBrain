@@ -8,6 +8,7 @@ interface KnowledgeChunk {
   source: string;
   category: string;
   keywords: string[];
+  semanticConcepts: string[];
   baseVectorRank: number;
 }
 
@@ -20,6 +21,7 @@ const CORPUS_CHUNKS: KnowledgeChunk[] = [
     source: 'specs/payments/v2_webhook_spec.md',
     category: 'PRD / SPEC',
     keywords: ['payment', 'webhook', 'stripe', 'hmac', 'signature', 'x-signature', 'idempotent', 'checkout'],
+    semanticConcepts: ['billing', 'order', 'paid', 'digest', 'secret', 'callback', 'fulfillment', 'payment'],
     baseVectorRank: 1,
   },
   {
@@ -30,6 +32,7 @@ const CORPUS_CHUNKS: KnowledgeChunk[] = [
     source: 'postmortems/webhook_timeout_circuit_breaker.md',
     category: 'POSTMORTEM',
     keywords: ['payment', 'timeout', '5000ms', 'circuit', 'breaker', 'retry', 'gateway', 'webhook'],
+    semanticConcepts: ['latency', 'resilience', 'fault', 'fallback', 'degraded', 'queue', 'backoff', 'timeout'],
     baseVectorRank: 2,
   },
   {
@@ -40,6 +43,7 @@ const CORPUS_CHUNKS: KnowledgeChunk[] = [
     source: 'security/oauth2_pkce_rfc7636.md',
     category: 'SECURITY SPEC',
     keywords: ['oauth', 'oauth2', 'pkce', 's256', 'token', 'refresh', 'replay', 'code_verifier', 'lineage'],
+    semanticConcepts: ['auth', 'authentication', 'jwt', 'session', 'identity', 'revocation', 'security', 'pkce'],
     baseVectorRank: 3,
   },
   {
@@ -50,6 +54,7 @@ const CORPUS_CHUNKS: KnowledgeChunk[] = [
     source: 'consensus/raft_quorum_spec.md',
     category: 'DISTRIBUTED SPEC',
     keywords: ['raft', 'quorum', 'leader', 'election', 'heartbeat', 'majority', 'partition', 'appendentries'],
+    semanticConcepts: ['cluster', 'consensus', 'distributed', 'node', 'follower', 'candidate', 'split', 'quorum'],
     baseVectorRank: 4,
   },
   {
@@ -60,6 +65,7 @@ const CORPUS_CHUNKS: KnowledgeChunk[] = [
     source: 'apps/knowledge/openapi_parser.py',
     category: 'PARSER ENGINE',
     keywords: ['openapi', 'swagger', 'postman', 'ref', '$ref', 'cycle', 'schema', 'parser'],
+    semanticConcepts: ['contract', 'specification', 'ingestion', 'endpoint', 'folder', 'circular', 'json', 'openapi'],
     baseVectorRank: 5,
   },
 ];
@@ -197,10 +203,14 @@ export const HybridRAGSection: React.FC = () => {
   );
 
   const rankedResults = useMemo(() => {
+    // Fixed-weight lexical demonstration stream + independent semantic concept stream
     const scored = CORPUS_CHUNKS.map((chunk) => {
       const haystack = `${chunk.title} ${chunk.snippet} ${chunk.source} ${chunk.keywords.join(' ')}`.toLowerCase();
+      const semanticField = `${chunk.category} ${chunk.semanticConcepts.join(' ')} ${chunk.title}`.toLowerCase();
       let lexicalScore = 0;
+      let vectorScore = 0;
       const matchedKeywords: string[] = [];
+
       for (const tok of queryTokens) {
         if (chunk.keywords.includes(tok)) {
           lexicalScore += 3.2;
@@ -210,10 +220,22 @@ export const HybridRAGSection: React.FC = () => {
           lexicalScore += 1.5;
           if (!matchedKeywords.includes(tok)) matchedKeywords.push(tok);
         }
+        // Independent semantic concept & prefix affinity for the simulated vector stream
+        if (chunk.semanticConcepts.includes(tok)) {
+          vectorScore += 4.0;
+        } else if (
+          tok.length >= 3 &&
+          chunk.semanticConcepts.some((c) => c.startsWith(tok.slice(0, 4)) || tok.startsWith(c.slice(0, 4)))
+        ) {
+          vectorScore += 2.6;
+        } else if (semanticField.includes(tok)) {
+          vectorScore += 1.8;
+        }
       }
       return {
         ...chunk,
         lexicalScore,
+        vectorScore,
         matchedKeywords,
       };
     });
@@ -222,7 +244,7 @@ export const HybridRAGSection: React.FC = () => {
     const bm25RankMap = new Map<string, number>();
     byBm25.forEach((item, idx) => bm25RankMap.set(item.id, idx + 1));
 
-    const byVector = [...scored].sort((a, b) => b.lexicalScore * 0.8 - a.lexicalScore * 0.8 || a.baseVectorRank - b.baseVectorRank);
+    const byVector = [...scored].sort((a, b) => b.vectorScore - a.vectorScore || a.baseVectorRank - b.baseVectorRank);
     const vectorRankMap = new Map<string, number>();
     byVector.forEach((item, idx) => vectorRankMap.set(item.id, idx + 1));
 
@@ -255,7 +277,7 @@ export const HybridRAGSection: React.FC = () => {
             SHEET 04 // apps/knowledge/hybrid_retriever.py · chroma_store.py · openapi_parser.py
           </span>
           <span className="meta-label">
-            INVARIANT 03: <span className="text-[#262523] font-medium">SQLITE 384-DIM VECTORS</span> · PUREBM25 (K1=1.5, B=0.75)
+            INVARIANT 03: <span className="text-[#262523] font-medium">SQLITE 384-DIM VECTORS</span> · LEXICAL + DENSE RRF (K=60)
           </span>
         </div>
 
@@ -270,10 +292,9 @@ export const HybridRAGSection: React.FC = () => {
         </div>
 
         <p className="text-[13px] sm:text-[14px] text-[#57554F] max-w-[820px] mb-8 leading-[1.7]">
-          <code className="text-[#262523] font-medium">HybridRetriever</code> combines dense semantic cosine similarity from{' '}
-          <code className="text-[#262523]">PersistentSQLiteVectorStore</code> (<code className="text-[#262523]">chroma_db/chroma_vectors.sqlite3</code>) with exact lexical token matching from{' '}
-          <code className="text-[#262523]">PureBM25</code> using Reciprocal Rank Fusion:{' '}
-          <code className="text-[#D95338] font-medium">RRF(d) = 1/(60 + rank_dense) + 1/(60 + rank_bm25)</code>.
+          In the Python backend, <code className="text-[#262523] font-medium">HybridRetriever</code> combines dense cosine similarity from{' '}
+          <code className="text-[#262523]">PersistentSQLiteVectorStore</code> (<code className="text-[#262523]">chroma_db/chroma_vectors.sqlite3</code>) with lexical token matching using Reciprocal Rank Fusion:{' '}
+          <code className="text-[#B33920] font-medium">RRF(d) = 1/(60 + rank_dense) + 1/(60 + rank_lexical)</code>. The interactive bench below demonstrates this dual-stream RRF ranking using client-side lexical-match and semantic-concept streams.
         </p>
 
         <div className="rule-heavy" />
@@ -281,11 +302,15 @@ export const HybridRAGSection: React.FC = () => {
         {/* Query Bar & Preset Buttons */}
         <div className="py-6 border-b border-[#D5D2C9] space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-            <div className="lg:col-span-3 meta-label text-[#262523] font-medium">
+            <label
+              htmlFor="hybrid-rrf-query-input"
+              className="lg:col-span-3 meta-label text-[#262523] font-medium cursor-pointer"
+            >
               HYBRID RRF QUERY BENCH:
-            </div>
+            </label>
             <div className="lg:col-span-9">
               <input
+                id="hybrid-rrf-query-input"
                 type="text"
                 value={queryText}
                 onChange={(e) => setQueryText(e.target.value)}
@@ -316,7 +341,7 @@ export const HybridRAGSection: React.FC = () => {
         <div className="grid grid-cols-12 gap-2 py-3 border-b border-[#D5D2C9] meta-label">
           <div className="col-span-2 sm:col-span-1">RANK</div>
           <div className="col-span-10 sm:col-span-6">DOCUMENT CHUNK, MATCHED TOKENS & SOURCE</div>
-          <div className="hidden sm:block sm:col-span-2 text-right">BM25 / VEC</div>
+          <div className="hidden sm:block sm:col-span-2 text-right">LEXICAL / VEC DEMO</div>
           <div className="hidden sm:block sm:col-span-3 text-right">RRF FUSION SCORE (K=60)</div>
         </div>
 
@@ -335,7 +360,7 @@ export const HybridRAGSection: React.FC = () => {
                 <div className="col-span-2 sm:col-span-1">
                   <span
                     className={`text-[13px] font-semibold ${
-                      idx === 0 ? 'text-[#D95338]' : 'text-[#87847C]'
+                      idx === 0 ? 'text-[#B33920]' : 'text-[#625F58]'
                     }`}
                   >
                     0{idx + 1}
@@ -354,13 +379,13 @@ export const HybridRAGSection: React.FC = () => {
                   <p className="text-[12px] text-[#57554F] leading-[1.6]">
                     {doc.snippet}
                   </p>
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#87847C]">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#625F58]">
                     <span>
                       SOURCE: <code className="text-[#262523]">{doc.source}</code>
                     </span>
                     {doc.matchedKeywords.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1">
-                        <span className="text-[10px] uppercase text-[#D95338] ml-1">MATCHED:</span>
+                        <span className="text-[10px] uppercase text-[#B33920] ml-1">MATCHED:</span>
                         {doc.matchedKeywords.map((kw) => (
                           <span
                             key={kw}
@@ -376,9 +401,9 @@ export const HybridRAGSection: React.FC = () => {
 
                 <div className="hidden sm:block sm:col-span-2 text-right space-y-1">
                   <div className="meta-value text-[12px]">
-                    BM25 #{doc.bm25_rank} · VEC #{doc.vector_rank}
+                    LEX #{doc.bm25_rank} · VEC #{doc.vector_rank}
                   </div>
-                  <div className="text-[10px] text-[#87847C]">
+                  <div className="text-[10px] text-[#625F58]">
                     {doc.bm25_contrib.toFixed(4)} + {doc.vector_contrib.toFixed(4)}
                   </div>
                 </div>
@@ -386,7 +411,7 @@ export const HybridRAGSection: React.FC = () => {
                 <div className="hidden sm:flex sm:col-span-3 flex-col items-end space-y-1.5">
                   <span
                     className={`text-[13px] font-semibold ${
-                      idx === 0 ? 'text-[#D95338]' : 'text-[#2A6F4E]'
+                      idx === 0 ? 'text-[#B33920]' : 'text-[#2A6F4E]'
                     }`}
                   >
                     {doc.rrf_score.toFixed(5)}
@@ -396,16 +421,16 @@ export const HybridRAGSection: React.FC = () => {
                     <div
                       style={{ width: `${bm25Pct}%` }}
                       className="bg-[#D95338] h-full"
-                      title={`PureBM25 contribution: ${doc.bm25_contrib.toFixed(5)}`}
+                      title={`Lexical match contribution: ${doc.bm25_contrib.toFixed(5)}`}
                     />
                     <div
                       style={{ width: `${vecPct}%` }}
                       className="bg-[#262523] h-full"
-                      title={`Dense Vector contribution: ${doc.vector_contrib.toFixed(5)}`}
+                      title={`Semantic vector demo contribution: ${doc.vector_contrib.toFixed(5)}`}
                     />
                   </div>
-                  <div className="text-[9px] text-[#87847C] uppercase tracking-wider">
-                    <span className="text-[#D95338]">■ BM25</span> · <span className="text-[#262523]">■ DENSE 384D</span>
+                  <div className="text-[9px] text-[#625F58] uppercase tracking-wider">
+                    <span className="text-[#B33920]">■ LEXICAL DEMO</span> · <span className="text-[#262523]">■ VECTOR DEMO</span>
                   </div>
                 </div>
               </div>
@@ -464,7 +489,7 @@ export const HybridRAGSection: React.FC = () => {
                   <span className="meta-label text-[#262523] font-semibold">
                     RAW UPLOADED SPEC ({PARSER_SAMPLES[activeParserTab].label})
                   </span>
-                  <code className="text-[#87847C] text-[10px]">INPUT PAYLOAD</code>
+                  <code className="text-[#625F58] text-[10px]">INPUT PAYLOAD</code>
                 </div>
                 <pre className="bg-[#F2F0EC] border border-[#D5D2C9] p-4 text-[11px] text-[#262523] overflow-x-auto max-h-[300px] leading-[1.55]">
                   {PARSER_SAMPLES[activeParserTab].raw}
@@ -476,7 +501,7 @@ export const HybridRAGSection: React.FC = () => {
                   <span className="meta-label text-[#2A6F4E] font-semibold">
                     NORMALIZED CONTRACT OUTPUT
                   </span>
-                  <code className="text-[#D95338] text-[10px]">
+                  <code className="text-[#B33920] text-[10px]">
                     {PARSER_SAMPLES[activeParserTab].module}
                   </code>
                 </div>
@@ -510,7 +535,7 @@ export const HybridRAGSection: React.FC = () => {
 
             <div className="border border-[#D5D2C9] bg-[#EAE7E0]/60 p-5 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="meta-label text-[#87847C]">
+                <span className="meta-label text-[#625F58]">
                   OPTIONAL // DISTRIBUTED CLUSTER ENGINE
                 </span>
                 <code className="text-[11px] text-[#57554F]">vector_store.py</code>

@@ -262,6 +262,34 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                 >
                   <span>HTTPX RUNNER</span>
                 </button>
+                <a
+                  href="https://github.com/harshitthek/CodeBrain"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-tech-primary no-underline"
+                >
+                  <span>GITHUB REPOSITORY</span>
+                  <span>↗</span>
+                </a>
+              </div>
+
+              {/* Real Experience GitHub Repository Callout */}
+              <div className="border-l-2 border-[#D95338] bg-[#EAE7E0]/85 px-4 py-3 max-w-[560px] space-y-1">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#B33920]">
+                  REAL END-TO-END EXPERIENCE // RUN LOCALLY VIA GITHUB
+                </div>
+                <p className="text-[12px] text-[#262523] leading-[1.6] m-0">
+                  For the full real experience — live Django 5.x multi-agent execution, real-time SSE telemetry, async <code>httpx</code> socket testing, and zero-Docker SQLite RAG — go to the{' '}
+                  <a
+                    href="https://github.com/harshitthek/CodeBrain"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#B33920] font-semibold underline underline-offset-2 hover:text-[#262523]"
+                  >
+                    GitHub Repository ↗
+                  </a>{' '}
+                  and follow its setup instructions.
+                </p>
               </div>
 
               {/* Inline 4-Metric Bar aligned with bottom of 3D Brain */}
@@ -271,7 +299,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <div className="meta-label text-[10px]">PYTEST SUITE</div>
                 </div>
                 <div>
-                  <div className="text-[18px] font-semibold text-[#D95338]">02 MAX</div>
+                  <div className="text-[18px] font-semibold text-[#B33920]">02 MAX</div>
                   <div className="meta-label text-[10px]">REFLECTION PASSES</div>
                 </div>
                 <div>
@@ -287,7 +315,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
 
             {/* Right Column (5 cols): 3D Brain Target Stage & Orthographic Datum Caption */}
             <div className="lg:col-span-5 h-[320px] sm:h-[360px] lg:h-[390px] flex flex-col justify-between pointer-events-none select-none">
-              <div className="flex items-center justify-between text-[10px] text-[#87847C] tracking-[0.14em] uppercase lg:pl-4">
+              <div className="flex items-center justify-between text-[10px] text-[#625F58] tracking-[0.14em] uppercase lg:pl-4">
                 <span>L-HEMISPHERE: ACTOR</span>
                 <span>R-HEMISPHERE: CRITIC</span>
               </div>
@@ -295,9 +323,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
               {/* Center space is occupied by the converged 3D Pin-Matrix Brain on ConstellationCanvas */}
               <div className="my-auto" />
 
-              <div className="flex items-center justify-between text-[10px] text-[#87847C] tracking-[0.14em] uppercase border-t border-[#D5D2C9] pt-3 lg:pl-4">
+              <div className="flex items-center justify-between text-[10px] text-[#625F58] tracking-[0.14em] uppercase border-t border-[#D5D2C9] pt-3 lg:pl-4">
                 <span>SLICES: 26 CORTICAL + 14 FOLIA</span>
-                <span className="text-[#D95338]">CLICK CORTEX TO SURGE</span>
+                <span className="text-[#B33920]">CLICK CORTEX TO SURGE</span>
               </div>
             </div>
           </div>
@@ -323,9 +351,11 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
 
             return (
               <div key={row.no} className="transition-colors">
-                <div
+                <button
+                  type="button"
+                  aria-expanded={isPrompt ? undefined : isExpanded}
                   onClick={() => handleRowClick(row)}
-                  className={`grid grid-cols-12 gap-2 py-5 sm:py-6 items-center cursor-pointer transition-colors ${
+                  className={`w-full text-left border-none bg-transparent p-0 grid grid-cols-12 gap-2 py-5 sm:py-6 items-center cursor-pointer transition-colors ${
                     isExpanded ? 'bg-[#EAE7E0]/70' : 'hover:bg-[#EAE7E0]/45'
                   }`}
                 >
@@ -333,7 +363,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <div className="col-span-2 sm:col-span-1">
                     <span
                       className={`text-[13px] font-medium tracking-[0.08em] ${
-                        isPrompt ? 'text-[#D95338] font-semibold' : 'text-[#87847C]'
+                        isPrompt ? 'text-[#B33920] font-semibold' : 'text-[#625F58]'
                       }`}
                     >
                       {row.no}
@@ -357,7 +387,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <div className="hidden md:block md:col-span-3 pr-3">
                     <span
                       className={`text-[12px] truncate block ${
-                        isPrompt ? 'text-[#87847C]' : 'text-[#57554F]'
+                        isPrompt ? 'text-[#625F58]' : 'text-[#57554F]'
                       }`}
                     >
                       {row.modulePath}
@@ -368,7 +398,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <div className="hidden sm:block sm:col-span-3 md:col-span-2">
                     <span
                       className={`meta-value ${
-                        isPrompt ? 'text-[#87847C]' : 'text-[#262523]'
+                        isPrompt ? 'text-[#625F58]' : 'text-[#262523]'
                       }`}
                     >
                       {row.origin}
@@ -379,26 +409,26 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <div className="hidden sm:block sm:col-span-2 md:col-span-1 text-right">
                     <span
                       className={`meta-value ${
-                        isPrompt ? 'text-[#87847C]' : 'text-[#262523]'
+                        isPrompt ? 'text-[#625F58]' : 'text-[#262523]'
                       }`}
                     >
                       {row.phase}
                     </span>
                   </div>
-                </div>
+                </button>
 
                 {/* Expandable Technical Specification Drawer */}
                 {isExpanded && !isPrompt && (
                   <div className="bg-[#EAE7E0] border-t border-[#D5D2C9] px-4 sm:px-8 py-5 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
                     <div className="lg:col-span-7 space-y-2">
-                      <div className="meta-label text-[#D95338]">
+                      <div className="meta-label text-[#B33920]">
                         SPECIFICATION // {row.modulePath}
                       </div>
                       <p className="text-[13px] text-[#262523] leading-[1.65]">
                         {row.summary}
                       </p>
                       <div className="text-[11px] text-[#57554F] pt-1">
-                        <span className="text-[#87847C] uppercase tracking-wider">Entrypoints: </span>
+                        <span className="text-[#625F58] uppercase tracking-wider">Entrypoints: </span>
                         <code>{row.classes}</code>
                       </div>
                     </div>
@@ -454,7 +484,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between border-b border-[#D5D2C9] pb-3">
-                    <span className="text-[11px] font-semibold tracking-[0.14em] text-[#D95338] uppercase">
+                    <span className="text-[11px] font-semibold tracking-[0.14em] text-[#B33920] uppercase">
                       {p.pr} // {p.testFile}
                     </span>
                     <span className="text-[10px] font-semibold tracking-[0.12em] text-[#2A6F4E] border border-[#2A6F4E]/40 bg-[#F2F0EC] px-2 py-0.5">
@@ -469,7 +499,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <ul className="space-y-1.5 text-[12px] text-[#57554F] list-none p-0 m-0">
                     {p.highlights.map((h, i) => (
                       <li key={i} className="flex items-start gap-2">
-                        <span className="text-[#D95338] font-bold">·</span>
+                        <span className="text-[#B33920] font-bold">·</span>
                         <span>{h}</span>
                       </li>
                     ))}
@@ -481,13 +511,86 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate }) => {
                   <button
                     type="button"
                     onClick={() => onNavigate(p.targetPage)}
-                    className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#262523] hover:text-[#D95338] bg-transparent border-none cursor-pointer p-0"
+                    className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#262523] hover:text-[#B33920] bg-transparent border-none cursor-pointer p-0"
                   >
                     OPEN DEDICATED SHEET →
                   </button>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* =================================================================
+            SHEET 01C: FULL REAL EXPERIENCE — GITHUB REPOSITORY & INSTRUCTIONS
+           ================================================================= */}
+        <div className="border-t border-[#262523] mt-14 pt-12">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <span className="meta-label">
+              SHEET 01C // GITHUB.COM/HARSHITTHEK/CODEBRAIN — LOCAL DEPLOYMENT & REAL EXPERIENCE
+            </span>
+            <span className="meta-label text-[#B33920] font-semibold">
+              PYTHON 3.10+ · ZERO DOCKER REQUIRED · MIT LICENSE
+            </span>
+          </div>
+
+          <div className="border border-[#262523] bg-[#EAE7E0] p-6 sm:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-6 space-y-4">
+              <div className="meta-label text-[#B33920] font-semibold">
+                EXPERIENCE THE LIVE DJANGO ENGINE LOCALLY
+              </div>
+              <h3 className="text-[20px] sm:text-[22px] font-semibold text-[#262523] leading-[1.3]">
+                For the real experience, visit the GitHub repository and follow its instructions.
+              </h3>
+              <p className="text-[13px] text-[#57554F] leading-[1.7]">
+                While this interactive technical datasheet lets you inspect every subsystem in the browser, the full production experience runs locally on your machine—connecting live LLM providers (<code className="text-[#262523]">DeepSeek</code>, <code className="text-[#262523]">Qwen</code>, <code className="text-[#262523]">OpenAI</code>, <code className="text-[#262523]">Ollama</code>, <code className="text-[#262523]">Groq</code>), streaming real-time SSE reflection logs, executing live <code className="text-[#262523]">httpx.AsyncClient</code> API assertions, and persisting 384-dim embeddings in SQLite.
+              </p>
+              <div className="pt-2 flex flex-wrap items-center gap-3">
+                <a
+                  href="https://github.com/harshitthek/CodeBrain"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-tech-vermilion no-underline"
+                >
+                  <span>GO TO GITHUB REPOSITORY</span>
+                  <span>↗</span>
+                </a>
+                <a
+                  href="https://github.com/harshitthek/CodeBrain#readme"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-tech-outline bg-[#F2F0EC] no-underline"
+                >
+                  <span>READ SETUP INSTRUCTIONS (README.MD) ↗</span>
+                </a>
+              </div>
+            </div>
+
+            <div className="lg:col-span-6 space-y-2.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="meta-label text-[#262523] font-semibold">
+                  QUICK START INSTRUCTIONS (FROM GITHUB README.MD)
+                </span>
+                <code className="text-[#2A6F4E] text-[10px]">ZERO-DOCKER SETUP</code>
+              </div>
+              <pre className="bg-[#262523] text-[#F2F0EC] border border-[#262523] p-4 sm:p-5 text-[11px] overflow-x-auto leading-[1.7] m-0">
+{`# 1. Clone the repository
+git clone https://github.com/harshitthek/CodeBrain.git
+cd CodeBrain
+
+# 2. Create virtual environment & install dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
+pip install -r requirements.txt
+
+# 3. Initialize SQLite database & run 61 verification tests
+python manage.py migrate
+pytest -v
+
+# 4. Launch live CodeBrain server at http://127.0.0.1:8000/
+python manage.py runserver`}
+              </pre>
+            </div>
           </div>
         </div>
       </div>

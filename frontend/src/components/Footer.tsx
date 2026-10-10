@@ -54,19 +54,21 @@ export const Footer: React.FC<FooterProps> = ({ activePage, onNavigate }) => {
                 <span>← PREV // {prevSheet.num} {prevSheet.label}</span>
               </button>
             ) : (
-              <span className="meta-label text-[#87847C]">
+              <span className="meta-label text-[#625F58]">
                 START OF TECHNICAL DATASHEET (SHEET 01)
               </span>
             )}
           </div>
 
-          <div className="flex items-center justify-center gap-1.5">
+          <nav aria-label="Sheet pagination" className="flex items-center justify-center gap-1.5">
             {SHEET_PAGES.map((p) => {
               const isCurrent = p.id === activePage;
               return (
                 <button
                   key={p.id}
                   type="button"
+                  aria-label={`Sheet ${p.num}: ${p.label}`}
+                  aria-current={isCurrent ? 'page' : undefined}
                   onClick={() => onNavigate(p.id)}
                   className={`px-2.5 py-1 text-[10px] font-mono border cursor-pointer transition-colors ${
                     isCurrent
@@ -78,7 +80,7 @@ export const Footer: React.FC<FooterProps> = ({ activePage, onNavigate }) => {
                 </button>
               );
             })}
-          </div>
+          </nav>
 
           <div className="text-right">
             {nextSheet ? (
@@ -134,7 +136,7 @@ export const Footer: React.FC<FooterProps> = ({ activePage, onNavigate }) => {
               className="grid grid-cols-12 gap-2 py-5 items-center no-underline hover:bg-[#EAE7E0]/60 transition-colors"
             >
               <div className="col-span-2 sm:col-span-1">
-                <span className="text-[13px] text-[#87847C] font-medium">
+                <span className="text-[13px] text-[#625F58] font-medium">
                   {author.no}
                 </span>
               </div>
@@ -152,10 +154,10 @@ export const Footer: React.FC<FooterProps> = ({ activePage, onNavigate }) => {
                 <div className="text-[13px] font-medium text-[#262523]">
                   {author.fullName}
                 </div>
-                <div className="text-[11px] text-[#87847C]">{author.role}</div>
+                <div className="text-[11px] text-[#625F58]">{author.role}</div>
               </div>
               <div className="hidden sm:block sm:col-span-3 text-right">
-                <span className="meta-value text-[#D95338] hover:underline">
+                <span className="meta-value text-[#B33920] hover:underline">
                   {author.handle} ↗
                 </span>
               </div>
@@ -175,7 +177,7 @@ export const Footer: React.FC<FooterProps> = ({ activePage, onNavigate }) => {
               href="https://github.com/harshitthek/CodeBrain"
               target="_blank"
               rel="noreferrer"
-              className="meta-label text-[#D95338] hover:underline no-underline"
+              className="meta-label text-[#B33920] hover:underline no-underline"
             >
               [GITHUB REPOSITORY ↗]
             </a>
@@ -192,7 +194,7 @@ export const Footer: React.FC<FooterProps> = ({ activePage, onNavigate }) => {
             <button
               type="button"
               onClick={() => onNavigate('pipeline')}
-              className="meta-label text-[#D95338] hover:text-[#262523] bg-transparent border-none cursor-pointer p-0 font-semibold"
+              className="meta-label text-[#B33920] hover:text-[#262523] bg-transparent border-none cursor-pointer p-0 font-semibold"
             >
               04 PHASES / 61 TESTS PASSED
             </button>

@@ -18,7 +18,7 @@ export const AgentRosterSection: React.FC = () => {
             SHEET 05A // apps/ai_agents/* (AGENTS.MD ROSTER)
           </span>
           <span className="meta-label">
-            ISOLATED DJANGO SUB-APPS · <span className="text-[#262523] font-medium">06 SPECIALIZED AGENTS</span>
+            05 DJANGO SUB-APPS + <span className="text-[#262523] font-medium">01 SHARED ORCHESTRATOR</span>
           </span>
         </div>
 
@@ -33,9 +33,10 @@ export const AgentRosterSection: React.FC = () => {
         </div>
 
         <p className="text-[13px] sm:text-[14px] text-[#57554F] max-w-[820px] mb-8 leading-[1.7]">
-          Every agent in CodeBrain is packaged as an isolated Django sub-app under{' '}
-          <code className="text-[#262523] font-medium">apps/ai_agents/</code> with its own system prompts, Pydantic v2 validation schemas, views, and LLM configuration wired through{' '}
-          <code className="text-[#262523]">LLMServiceFactory</code>.
+          CodeBrain packages five specialized domain agents as dedicated Django sub-apps under{' '}
+          <code className="text-[#262523] font-medium">apps/ai_agents/</code> (each with its own system prompts, Pydantic v2 validation schemas, views, and{' '}
+          <code className="text-[#262523]">LLMServiceFactory</code> binding) and coordinates the Actor and Critic via the shared reflection orchestrator in{' '}
+          <code className="text-[#262523] font-medium">apps/ai_agents/common/orchestrator.py</code>.
         </p>
 
         {/* Interactive Inter-Agent Collaboration Topology (AGENTS.md) */}
@@ -44,7 +45,7 @@ export const AgentRosterSection: React.FC = () => {
             <span className="meta-label text-[#262523] font-semibold">
               INTER-AGENT COLLABORATION TOPOLOGY // CLICK ANY NODE TO INSPECT DATASHEET
             </span>
-            <span className="meta-label text-[#D95338]">
+            <span className="meta-label text-[#B33920]">
               ACTIVE NODE: {selectedAgent.id.toUpperCase()}
             </span>
           </div>
@@ -52,7 +53,7 @@ export const AgentRosterSection: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-[11px]">
             {/* Track 01: Requirements & Reflection Loop */}
             <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-4 space-y-2.5">
-              <div className="text-[10px] text-[#87847C] uppercase tracking-wider font-semibold">
+              <div className="text-[10px] text-[#625F58] uppercase tracking-wider font-semibold">
                 PIPELINE A // PRD TO CONVERGED SUITE
               </div>
               <div className="space-y-2">
@@ -65,11 +66,17 @@ export const AgentRosterSection: React.FC = () => {
                       : 'bg-[#EAE7E0] text-[#262523] border-[#D5D2C9] hover:border-[#262523]'
                   }`}
                 >
-                  <div className="text-[10px] text-[#D95338] font-semibold">01 // prd_analyzer</div>
+                  <div
+                    className={`text-[10px] font-semibold ${
+                      selectedAgentId === 'prd_analyzer' ? 'text-[#D95338]' : 'text-[#B33920]'
+                    }`}
+                  >
+                    01 // prd_analyzer
+                  </div>
                   <div className="text-[11px]">.docx (pypandoc) / .md / .txt decomposition</div>
                 </button>
 
-                <div className="text-center text-[#D95338] font-bold text-[12px]">↓</div>
+                <div className="text-center text-[#B33920] font-bold text-[12px]">↓</div>
 
                 <button
                   type="button"
@@ -80,8 +87,12 @@ export const AgentRosterSection: React.FC = () => {
                       : 'bg-[#EAE7E0] text-[#262523] border-[#D5D2C9] hover:border-[#262523]'
                   }`}
                 >
-                  <div className="text-[10px] text-[#D95338] font-semibold">
-                    02 // orchestrator (Actor ⇄ Critic Loop)
+                  <div
+                    className={`text-[10px] font-semibold ${
+                      selectedAgentId === 'orchestrator' ? 'text-[#D95338]' : 'text-[#B33920]'
+                    }`}
+                  >
+                    02 // orchestrator (Shared Actor ⇄ Critic Loop)
                   </div>
                   <div className="text-[11px]">Bounded 2-pass reflection & monotonic guard</div>
                 </button>
@@ -96,7 +107,13 @@ export const AgentRosterSection: React.FC = () => {
                         : 'bg-[#EAE7E0] text-[#262523] border-[#D5D2C9] hover:border-[#262523]'
                     }`}
                   >
-                    <div className="text-[9px] text-[#D95338] font-semibold">ACTOR</div>
+                    <div
+                      className={`text-[9px] font-semibold ${
+                        selectedAgentId === 'test_case_generator' ? 'text-[#D95338]' : 'text-[#B33920]'
+                      }`}
+                    >
+                      ACTOR
+                    </div>
                     <div className="text-[10px] font-medium truncate">test_case_generator</div>
                   </button>
                   <button
@@ -108,7 +125,13 @@ export const AgentRosterSection: React.FC = () => {
                         : 'bg-[#EAE7E0] text-[#262523] border-[#D5D2C9] hover:border-[#262523]'
                     }`}
                   >
-                    <div className="text-[9px] text-[#2A6F4E] font-semibold">CRITIC</div>
+                    <div
+                      className={`text-[9px] font-semibold ${
+                        selectedAgentId === 'test_case_reviewer' ? 'text-[#D95338]' : 'text-[#2A6F4E]'
+                      }`}
+                    >
+                      CRITIC
+                    </div>
                     <div className="text-[10px] font-medium truncate">test_case_reviewer</div>
                   </button>
                 </div>
@@ -118,14 +141,14 @@ export const AgentRosterSection: React.FC = () => {
             {/* Track 02: API Contract & Closed-Loop Runner */}
             <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-4 flex flex-col justify-between space-y-2.5">
               <div className="space-y-2">
-                <div className="text-[10px] text-[#87847C] uppercase tracking-wider font-semibold">
+                <div className="text-[10px] text-[#625F58] uppercase tracking-wider font-semibold">
                   PIPELINE B // REST CONTRACT & HTTPX RUNNER
                 </div>
                 <div className="p-2.5 border border-[#D5D2C9] bg-[#EAE7E0]/60 text-[#57554F]">
                   <div className="text-[10px] text-[#262523] font-semibold">SPEC INGESTION</div>
                   <div>OpenAPI 3.x / Swagger 2.0 / Postman v2.1</div>
                 </div>
-                <div className="text-center text-[#D95338] font-bold text-[12px]">↓</div>
+                <div className="text-center text-[#B33920] font-bold text-[12px]">↓</div>
                 <button
                   type="button"
                   onClick={() => setSelectedAgentId('iface_case_generator')}
@@ -135,7 +158,11 @@ export const AgentRosterSection: React.FC = () => {
                       : 'bg-[#EAE7E0] text-[#262523] border-[#D5D2C9] hover:border-[#262523]'
                   }`}
                 >
-                  <div className="text-[10px] text-[#D95338] font-semibold">
+                  <div
+                    className={`text-[10px] font-semibold ${
+                      selectedAgentId === 'iface_case_generator' ? 'text-[#D95338]' : 'text-[#B33920]'
+                    }`}
+                  >
                     05 // iface_case_generator
                   </div>
                   <div className="text-[11px] mt-0.5">
@@ -151,14 +178,14 @@ export const AgentRosterSection: React.FC = () => {
             {/* Track 03: White-Box Source AST Analysis */}
             <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-4 flex flex-col justify-between space-y-2.5">
               <div className="space-y-2">
-                <div className="text-[10px] text-[#87847C] uppercase tracking-wider font-semibold">
+                <div className="text-[10px] text-[#625F58] uppercase tracking-wider font-semibold">
                   PIPELINE C // STATIC AST & WHITE-BOX QA
                 </div>
                 <div className="p-2.5 border border-[#D5D2C9] bg-[#EAE7E0]/60 text-[#57554F]">
                   <div className="text-[10px] text-[#262523] font-semibold">SOURCE CODE INPUT</div>
                   <div>Java Class / Method Declarations & AST</div>
                 </div>
-                <div className="text-center text-[#D95338] font-bold text-[12px]">↓</div>
+                <div className="text-center text-[#B33920] font-bold text-[12px]">↓</div>
                 <button
                   type="button"
                   onClick={() => setSelectedAgentId('java_code_analyzer')}
@@ -168,7 +195,11 @@ export const AgentRosterSection: React.FC = () => {
                       : 'bg-[#EAE7E0] text-[#262523] border-[#D5D2C9] hover:border-[#262523]'
                   }`}
                 >
-                  <div className="text-[10px] text-[#D95338] font-semibold">
+                  <div
+                    className={`text-[10px] font-semibold ${
+                      selectedAgentId === 'java_code_analyzer' ? 'text-[#D95338]' : 'text-[#B33920]'
+                    }`}
+                  >
                     06 // java_code_analyzer
                   </div>
                   <div className="text-[11px] mt-0.5">
@@ -206,7 +237,7 @@ export const AgentRosterSection: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <span
                         className={`text-[12px] font-semibold ${
-                          isSelected ? 'text-[#D95338]' : 'text-[#87847C]'
+                          isSelected ? 'text-[#D95338]' : 'text-[#625F58]'
                         }`}
                       >
                         {num}
@@ -225,7 +256,7 @@ export const AgentRosterSection: React.FC = () => {
                   </div>
                   <span
                     className={`text-[11px] uppercase tracking-wider ${
-                      isSelected ? 'text-[#D95338]' : 'text-[#87847C]'
+                      isSelected ? 'text-[#D95338]' : 'text-[#625F58]'
                     }`}
                   >
                     →
@@ -240,7 +271,7 @@ export const AgentRosterSection: React.FC = () => {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D5D2C9] pb-4">
                 <div>
-                  <div className="meta-label text-[#D95338] font-semibold">
+                  <div className="meta-label text-[#B33920] font-semibold">
                     {selectedAgent.role}
                   </div>
                   <h3 className="text-[22px] font-medium text-[#262523] mt-1">
@@ -261,7 +292,7 @@ export const AgentRosterSection: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-4 space-y-1">
-                  <div className="meta-label text-[#D95338]">INPUT CONTRACT</div>
+                  <div className="meta-label text-[#B33920]">INPUT CONTRACT</div>
                   <div className="text-[12px] text-[#262523] leading-[1.5]">
                     {selectedAgent.input_format}
                   </div>

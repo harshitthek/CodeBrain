@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 type GlyphKind = 'dot' | 'cross' | 'ring' | 'bit0' | 'bit1';
 
@@ -76,6 +76,26 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
   onPhaseChange,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const assemblyProgressRef = useRef<number>(0);
+  const triggerTimeRef = useRef<number | null>(null);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(() => {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -83,7 +103,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let animationFrameId: number;
+    let animationFrameId = 0;
     let width = 1200;
     let height = 900;
     let stageW = 1000;
@@ -99,10 +119,29 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
     const GRID_PITCH = 6;
 
     const startTime = performance.now();
-    // Forms on either a little scroll OR a click anywhere, and never reverts back.
-    let triggerTime: number | null = window.scrollY > 2 ? performance.now() : null;
-    let maxAssemblyProgress = 0;
-    let lastReportedPhase: 'SCATTERED' | 'CONVERGING' | 'ORBITING' = 'SCATTERED';
+
+    if (prefersReducedMotion) {
+      assemblyProgressRef.current = 1;
+      if (triggerTimeRef.current === null) {
+        triggerTimeRef.current = startTime;
+      }
+    } else if ((window.scrollY || 0) > 2 && triggerTimeRef.current === null) {
+      triggerTimeRef.current = startTime;
+    }
+
+    // Preserve formed state across effect reruns when reduced-motion preference changes
+    let triggerTime = triggerTimeRef.current;
+    let maxAssemblyProgress = prefersReducedMotion ? 1 : assemblyProgressRef.current;
+    let lastReportedPhase: 'SCATTERED' | 'CONVERGING' | 'ORBITING' =
+      maxAssemblyProgress >= 0.96
+        ? 'ORBITING'
+        : maxAssemblyProgress >= 0.08
+        ? 'CONVERGING'
+        : 'SCATTERED';
+
+    if (prefersReducedMotion || maxAssemblyProgress >= 0.96) {
+      onPhaseChange?.('ORBITING');
+    }
     let pulseSurgeTime = -999;
 
     let mouseX = -9999;
@@ -111,6 +150,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
     const triggerFormationOnce = () => {
       if (triggerTime === null) {
         triggerTime = performance.now();
+        triggerTimeRef.current = triggerTime;
       }
     };
 
@@ -623,6 +663,9 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
     const handleResize = () => {
       setupResolution();
       initCodeBrain();
+      if (prefersReducedMotion) {
+        render(performance.now());
+      }
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -639,7 +682,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const { cx, cy } = getBrainCenter();
-      if (Math.hypot(mx - cx, my - cy) < 220) {
+      if (!prefersReducedMotion && Math.hypot(mx - cx, my - cy) < 220) {
         pulseSurgeTime = performance.now();
       }
     };
@@ -766,7 +809,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       }
 
       // 4. Slow Counter-Rotating Vermilion Telemetry Arc Brackets on the Outer Circle
-      const sweepAngle = elapsedSec * 0.25;
+      const sweepAngle = prefersReducedMotion ? 0.2 : elapsedSec * 0.25;
       ctx.strokeStyle = '#D95338';
       ctx.lineWidth = 1.6;
       ctx.globalAlpha = alpha * 0.8;
@@ -791,7 +834,10 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       ctx.restore();
     };
 
+    let disposed = false;
+
     const render = (now: number) => {
+      if (disposed) return;
       const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
       lastFrameTime = now;
 
@@ -802,6 +848,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
 
       if (scrollY > 1 && triggerTime === null) {
         triggerTime = now;
+        triggerTimeRef.current = now;
       }
 
       // =====================================================================
@@ -812,6 +859,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       const rawProgress =
         triggerTime !== null ? Math.max(0, Math.min(1, timeSinceTrigger / 1.85)) : 0;
       maxAssemblyProgress = Math.max(maxAssemblyProgress, rawProgress);
+      assemblyProgressRef.current = maxAssemblyProgress;
 
       const currentPhase: 'SCATTERED' | 'CONVERGING' | 'ORBITING' =
         maxAssemblyProgress < 0.08
@@ -835,9 +883,11 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       const mouseTiltX =
         mouseY > 0 && mouseY < height ? ((mouseY - cy) / height) * 0.12 : 0;
 
-      rotY += 0.0032 + mouseTiltY;
-      const targetRotX = 0.28 + mouseTiltX;
-      rotX += (targetRotX - rotX) * 0.06;
+      if (!prefersReducedMotion) {
+        rotY += 0.0032 + mouseTiltY;
+        const targetRotX = 0.28 + mouseTiltX;
+        rotX += (targetRotX - rotX) * 0.06;
+      }
 
       const cosY = Math.cos(rotY);
       const sinY = Math.sin(rotY);
@@ -914,7 +964,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
         const interactionRadius = 64;
         let nearCursor = false;
 
-        if (distSq < interactionRadius * interactionRadius && distSq > 0.01) {
+        if (!prefersReducedMotion && distSq < interactionRadius * interactionRadius && distSq > 0.01) {
           const dist = Math.sqrt(distSq);
           const force = (1 - dist / interactionRadius) * 2.1;
           p.vx += (dx / dist) * force;
@@ -922,12 +972,17 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
           nearCursor = dist < 44;
         }
 
-        p.vx += -p.ox * 0.14;
-        p.vy += -p.oy * 0.14;
-        p.vx *= 0.78;
-        p.vy *= 0.78;
-        p.ox += p.vx;
-        p.oy += p.vy;
+        if (!prefersReducedMotion) {
+          p.vx += -p.ox * 0.14;
+          p.vy += -p.oy * 0.14;
+          p.vx *= 0.78;
+          p.vy *= 0.78;
+          p.ox += p.vx;
+          p.oy += p.vy;
+        } else {
+          p.ox = 0;
+          p.oy = 0;
+        }
 
         const dist3DFromOrigin = Math.hypot(p.tx, p.ty, p.tz);
         const inSurge = isSurging && Math.abs(dist3DFromOrigin - surgeRadius) < 28;
@@ -1039,8 +1094,10 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
             const tract = nerveTracts[corp.tractIdx];
             if (!tract || tract.indices.length < 3) continue;
 
-            corp.progress =
-              (corp.progress + corp.speed * speedBoost * dt + 10) % 1;
+            if (!prefersReducedMotion) {
+              corp.progress =
+                (corp.progress + corp.speed * speedBoost * dt + 10) % 1;
+            }
 
             const head = samplePointOnTract(
               tract.indices,
@@ -1210,13 +1267,29 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       }
 
       ctx.globalAlpha = 1;
-      animationFrameId = requestAnimationFrame(render);
+      if (!prefersReducedMotion) {
+        animationFrameId = requestAnimationFrame(render);
+      }
     };
 
-    animationFrameId = requestAnimationFrame(render);
+    if (prefersReducedMotion) {
+      render(performance.now());
+      if (typeof document !== 'undefined' && 'fonts' in document && document.fonts?.ready) {
+        document.fonts.ready.then(() => {
+          if (!disposed) {
+            render(performance.now());
+          }
+        });
+      }
+    } else {
+      animationFrameId = requestAnimationFrame(render);
+    }
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      disposed = true;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScrollTrigger);
@@ -1225,7 +1298,7 @@ export const ConstellationCanvas: React.FC<ConstellationCanvasProps> = ({
       window.removeEventListener('click', handleClick);
       document.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [onPhaseChange]);
+  }, [onPhaseChange, prefersReducedMotion]);
 
   return (
     <canvas

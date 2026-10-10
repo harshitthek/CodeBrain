@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { CodeBrainService } from '../services/codebrainService';
 import { APIEndpointDefinition, APIRunResult } from '../types/codebrain';
 import { DotMatrixText } from './DotMatrixText';
@@ -101,23 +101,40 @@ export const APIRunnerSection: React.FC = () => {
   const [runResult, setRunResult] = useState<APIRunResult | null>(INITIAL_RUN_RESULT);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [codeTab, setCodeTab] = useState<'pytest' | 'postman'>('pytest');
+  const latestRequestIdRef = useRef<number>(0);
 
   const isSsrfBlocked = runResult ? runResult.status_code === 403 : false;
 
   const handleSelectEndpoint = async (ep: APIEndpointDefinition & { defaultBaseUrl: string }) => {
+    const reqId = ++latestRequestIdRef.current;
     setSelectedEndpoint(ep);
     setTargetBaseUrl(ep.defaultBaseUrl);
     setIsExecuting(true);
-    const result = await CodeBrainService.executeAPITest(ep, ep.defaultBaseUrl);
-    setRunResult(result);
-    setIsExecuting(false);
+    try {
+      const result = await CodeBrainService.executeAPITest(ep, ep.defaultBaseUrl);
+      if (reqId === latestRequestIdRef.current) {
+        setRunResult(result);
+      }
+    } finally {
+      if (reqId === latestRequestIdRef.current) {
+        setIsExecuting(false);
+      }
+    }
   };
 
   const handleRunTest = async () => {
+    const reqId = ++latestRequestIdRef.current;
     setIsExecuting(true);
-    const result = await CodeBrainService.executeAPITest(selectedEndpoint, targetBaseUrl);
-    setRunResult(result);
-    setIsExecuting(false);
+    try {
+      const result = await CodeBrainService.executeAPITest(selectedEndpoint, targetBaseUrl);
+      if (reqId === latestRequestIdRef.current) {
+        setRunResult(result);
+      }
+    } finally {
+      if (reqId === latestRequestIdRef.current) {
+        setIsExecuting(false);
+      }
+    }
   };
 
   const safeTestId = selectedEndpoint.id.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -244,7 +261,7 @@ async def test_${safeTestId}():
           <code className="text-[#262523]">httpx.AsyncClient</code> and{' '}
           <code className="text-[#262523]">asyncio.Semaphore(5)</code>. Before opening a socket,{' '}
           <code className="text-[#262523]">_resolve_safe_target()</code> resolves DNS via{' '}
-          <code className="text-[#262523]">socket.getaddrinfo()</code>, blocks cloud metadata (<code className="text-[#D95338]">169.254.169.254</code>, <code className="text-[#D95338]">fd00:ec2::254</code>) and private/loopback ranges, and pins the validated IP with HTTPS <code className="text-[#262523]">sni_hostname</code> preservation.
+          <code className="text-[#262523]">socket.getaddrinfo()</code>, blocks cloud metadata (<code className="text-[#B33920]">169.254.169.254</code>, <code className="text-[#B33920]">fd00:ec2::254</code>) and private/loopback ranges, and pins the validated IP with HTTPS <code className="text-[#262523]">sni_hostname</code> preservation.
         </p>
 
         {/* 3-Stage SSRF & DNS Pinning Pipeline Bar */}
@@ -255,7 +272,7 @@ async def test_${safeTestId}():
             </span>
             <span
               className={`meta-label font-semibold ${
-                isSsrfBlocked ? 'text-[#D95338]' : 'text-[#2A6F4E]'
+                isSsrfBlocked ? 'text-[#B33920]' : 'text-[#2A6F4E]'
               }`}
             >
               {isSsrfBlocked
@@ -266,7 +283,7 @@ async def test_${safeTestId}():
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-[11px]">
             <div className="border border-[#D5D2C9] bg-[#F2F0EC] p-3.5 space-y-1">
-              <div className="text-[10px] text-[#87847C] uppercase tracking-wider">
+              <div className="text-[10px] text-[#625F58] uppercase tracking-wider">
                 STAGE 01 // DNS RESOLUTION
               </div>
               <div className="font-semibold text-[#262523]">
@@ -302,13 +319,13 @@ async def test_${safeTestId}():
             <div
               className={`border p-3.5 space-y-1 ${
                 isSsrfBlocked
-                  ? 'border-[#D5D2C9] bg-[#EAE7E0]/60 text-[#87847C]'
+                  ? 'border-[#D5D2C9] bg-[#EAE7E0]/60 text-[#625F58]'
                   : 'border-[#2A6F4E] bg-[#F2F0EC] text-[#262523]'
               }`}
             >
               <div
                 className={`text-[10px] uppercase tracking-wider font-semibold ${
-                  isSsrfBlocked ? 'text-[#87847C]' : 'text-[#2A6F4E]'
+                  isSsrfBlocked ? 'text-[#625F58]' : 'text-[#2A6F4E]'
                 }`}
               >
                 STAGE 03 // IP PINNING & TLS SNI
@@ -355,13 +372,19 @@ async def test_${safeTestId}():
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-semibold tracking-[0.12em] text-[#D95338]">
+                      <span
+                        className={`text-[11px] font-semibold tracking-[0.12em] ${
+                          isSelected ? 'text-[#D95338]' : 'text-[#B33920]'
+                        }`}
+                      >
                         0{idx + 1} // {ep.method} {ep.path}
                       </span>
                       <span
                         className={`text-[9px] uppercase tracking-wider px-1.5 py-0.5 border ${
                           isProbe
-                            ? 'border-[#D95338] text-[#D95338]'
+                            ? isSelected
+                              ? 'border-[#D95338] text-[#D95338]'
+                              : 'border-[#B33920] text-[#B33920]'
                             : isSelected
                             ? 'border-[#F2F0EC]/40 text-[#F2F0EC]'
                             : 'border-[#2A6F4E] text-[#2A6F4E]'
@@ -403,7 +426,7 @@ async def test_${safeTestId}():
                 {selectedEndpoint.assertions.map((ast, i) => (
                   <div key={i} className="p-3 flex items-center justify-between text-[11px]">
                     <code className="text-[#262523]">{ast.expression}</code>
-                    <span className="text-[#87847C] uppercase tracking-wider text-[10px]">
+                    <span className="text-[#625F58] uppercase tracking-wider text-[10px]">
                       {ast.type}
                     </span>
                   </div>
@@ -463,7 +486,7 @@ async def test_${safeTestId}():
               <div className="border border-[#D5D2C9] bg-[#EAE7E0] p-6 space-y-2 text-[12px] text-[#262523] my-auto">
                 <div>[01] Parsing URL scheme and netloc via urllib.parse.urlparse()...</div>
                 <div>[02] Resolving A/AAAA records via socket.getaddrinfo()...</div>
-                <div className="text-[#D95338]">[03] Checking _is_blocked_ip() against 169.254.0.0/16, fd00:ec2::254 & 127.0.0.0/8...</div>
+                <div className="text-[#B33920]">[03] Checking _is_blocked_ip() against 169.254.0.0/16, fd00:ec2::254 & 127.0.0.0/8...</div>
               </div>
             )}
 
@@ -475,7 +498,7 @@ async def test_${safeTestId}():
                     <div className="meta-label text-[10px]">HTTP STATUS</div>
                     <div
                       className={`text-[16px] font-semibold mt-0.5 ${
-                        runResult.status_code === 200 ? 'text-[#2A6F4E]' : 'text-[#D95338]'
+                        runResult.status_code === 200 ? 'text-[#2A6F4E]' : 'text-[#B33920]'
                       }`}
                     >
                       {runResult.status_code} {runResult.status_code === 200 ? 'OK' : 'BLOCKED'}
@@ -511,7 +534,7 @@ async def test_${safeTestId}():
                       <div className="flex items-center gap-2">
                         <span
                           className={`font-semibold ${
-                            a.passed ? 'text-[#2A6F4E]' : 'text-[#D95338]'
+                            a.passed ? 'text-[#2A6F4E]' : 'text-[#B33920]'
                           }`}
                         >
                           {a.passed ? '[PASS]' : '[FAIL]'}
@@ -524,7 +547,7 @@ async def test_${safeTestId}():
                     </div>
                   ))}
                   {runResult.error_message && (
-                    <div className="text-[11px] text-[#D95338] pt-1 border-t border-[#D5D2C9]">
+                    <div className="text-[11px] text-[#B33920] pt-1 border-t border-[#D5D2C9]">
                       {runResult.error_message}
                     </div>
                   )}
@@ -568,7 +591,7 @@ async def test_${safeTestId}():
                             error: 'SSRF_GUARD_BLOCKED',
                             module: 'apps/ai_agents/iface_case_generator/runner.py',
                             method: '_resolve_safe_target',
-                            blocked_target: targetBaseUrl,
+                            blocked_target: runResult.url,
                             reason:
                               runResult.error_message ||
                               'Target IP falls within restricted cloud metadata or loopback range.',
@@ -641,10 +664,10 @@ async def test_${safeTestId}():
                     key={row.op}
                     className="px-3.5 py-2.5 grid grid-cols-12 gap-2 items-center text-[11px]"
                   >
-                    <div className="col-span-4 font-semibold text-[#D95338]">
+                    <div className="col-span-4 font-semibold text-[#B33920]">
                       <code>{row.op}</code>
                     </div>
-                    <div className="col-span-3 text-[#87847C] text-[10px] uppercase">
+                    <div className="col-span-3 text-[#625F58] text-[10px] uppercase">
                       {row.target}
                     </div>
                     <div className="col-span-5 text-right truncate">

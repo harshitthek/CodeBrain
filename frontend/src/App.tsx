@@ -63,13 +63,14 @@ export const App: React.FC = () => {
             <button
               key={p.id}
               type="button"
+              tabIndex={-1}
               onClick={() => handleNavigate(p.id)}
               title={`${p.num} ${p.label}`}
               style={{ top: `${topPct}%` }}
               className={`absolute -left-[5px] w-[11px] h-[11px] rounded-full border cursor-pointer p-0 flex items-center justify-center transition-colors ${
                 isCurrent
                   ? 'border-[#262523] bg-[#F2F0EC]'
-                  : 'border-[#87847C] bg-[#F2F0EC] hover:border-[#D95338]'
+                  : 'border-[#625F58] bg-[#F2F0EC] hover:border-[#D95338]'
               }`}
             >
               {isCurrent && <span className="w-[4.5px] h-[4.5px] rounded-full bg-[#D95338]" />}
