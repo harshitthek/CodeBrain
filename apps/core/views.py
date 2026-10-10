@@ -351,8 +351,10 @@ def update_test_case_status(request):
         test_case.save()
 
         if comments:
+            reviewer = request.user if getattr(request, 'user', None) and request.user.is_authenticated else None
             TestCaseReview.objects.create(
                 test_case=test_case,
+                reviewer=reviewer,
                 review_comments=comments
             )
 
@@ -361,7 +363,7 @@ def update_test_case_status(request):
         return JsonResponse({'success': False, 'message': 'Test case not found'}, status=404)
     except Exception as e:
         logger.error(f"Failed to update test case status: {str(e)}", exc_info=True)
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'Failed to update test case status'}, status=500)
 
 
 def pipeline_view(request):
