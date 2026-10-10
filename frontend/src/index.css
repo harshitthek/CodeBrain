@@ -20,7 +20,7 @@
   --leading-nav-label: 1.2;
   --tracking-nav-label: 0.35px;
   --text-body: 18px;
-  --leading-body: 1.5;
+  --leading-body: 1.6;
   --text-heading-2xs: 24px;
   --leading-heading-2xs: 1.25;
   --tracking-heading-2xs: -0.48px;
@@ -38,7 +38,7 @@
   --leading-heading-lg: 1.1;
   --tracking-heading-lg: -3.12px;
   --text-display: 113px;
-  --leading-display: 1.1;
+  --leading-display: 1.05;
   --tracking-display: -4.52px;
 
   /* Spacing Scale */
@@ -58,7 +58,6 @@
 }
 
 :root {
-  /* Colors */
   --color-void: #000000;
   --color-bone-white: #ffffff;
   --color-ash-gray: #9a9a9a;
@@ -67,71 +66,11 @@
   --color-saffron-spark: #ffb829;
   --color-deep-verdant: #15846e;
 
-  /* Typography — Font Families */
   --font-ppneuemontreal: 'PPNeueMontreal', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-
-  /* Typography — Scale */
-  --text-caption: 12px;
-  --leading-caption: 1.5;
-  --text-nav-label: 14px;
-  --leading-nav-label: 1.2;
-  --tracking-nav-label: 0.35px;
-  --text-body: 18px;
-  --leading-body: 1.5;
-  --text-heading-2xs: 24px;
-  --leading-heading-2xs: 1.25;
-  --tracking-heading-2xs: -0.48px;
-  --text-heading-xs: 27px;
-  --leading-heading-xs: 1;
-  --text-subheading: 36px;
-  --leading-subheading: 1.2;
-  --text-heading-sm: 42px;
-  --leading-heading-sm: 1.2;
-  --tracking-heading-sm: -1.68px;
-  --text-heading: 48px;
-  --leading-heading: 1.1;
-  --tracking-heading: -1.68px;
-  --text-heading-lg: 78px;
-  --leading-heading-lg: 1.1;
-  --tracking-heading-lg: -3.12px;
-  --text-display: 113px;
-  --leading-display: 1.1;
-  --tracking-display: -4.52px;
-
-  /* Typography — Weights */
   --font-weight-extralight: 200;
   --font-weight-regular: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-
-  /* Spacing */
-  --spacing-unit: 6px;
-  --spacing-6: 6px;
-  --spacing-12: 12px;
-  --spacing-18: 18px;
-  --spacing-24: 24px;
-  --spacing-30: 30px;
-  --spacing-36: 36px;
-  --spacing-60: 60px;
-  --spacing-96: 96px;
-  --spacing-120: 120px;
-
-  /* Layout */
-  --page-max-width: 1280px;
-  --section-gap: 96px;
-  --card-padding: 30px;
-  --element-gap: 12px;
-
-  /* Named Radii */
-  --radius-nav: 24px;
-  --radius-tags: 9999px;
-  --radius-cards: 24px;
-  --radius-buttons: 24px;
-
-  /* Surfaces */
-  --surface-void-canvas: #000000;
-  --surface-deep-verdant-tint: #15846e;
-  --surface-electric-iris: #8052ff;
 }
 
 /* Global Reset & Base Typography */
@@ -145,7 +84,7 @@ html {
   background-color: #000000;
   color: #ffffff;
   font-family: var(--font-ppneuemontreal);
-  font-feature-settings: "ss01" on;
+  font-feature-settings: "ss01" on, "cv05" on;
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -156,18 +95,33 @@ body {
   color: #ffffff;
   min-height: 100vh;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* Ambient Velvet Background Glow (Atmospheric Depth) */
+.ambient-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 1400px;
+  height: 600px;
+  background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(128, 82, 255, 0.12) 0%, rgba(21, 132, 110, 0.04) 50%, transparent 80%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* Custom scrollbar to keep pure black void uninterrupted */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: #000000;
 }
 ::-webkit-scrollbar-thumb {
   background: #222222;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #333333;
@@ -177,38 +131,42 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-weight: 400;
   color: #ffffff;
+  letter-spacing: -0.035em;
 }
 
 /* Signature ultra-light body text */
 p, .font-body-ultralight {
   font-weight: 200;
-  line-height: 1.5;
+  line-height: 1.65;
 }
 
-/* Pill Button utility */
+/* Sleek Pill Button utility */
 .btn-primary-pill {
   background-color: #8052ff;
   color: #ffffff;
-  border-radius: 22.5px;
-  padding: 14.4px 16px;
-  font-size: 14px;
+  border-radius: 9999px;
+  padding: 13px 26px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.06em;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.15s ease;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   border: none;
   outline: none;
   text-decoration: none;
   white-space: nowrap;
+  box-shadow: 0 0 24px -4px rgba(128, 82, 255, 0.4);
 }
 
 .btn-primary-pill:hover {
-  opacity: 0.92;
-  transform: translateY(-1px);
+  opacity: 0.94;
+  transform: translateY(-2px);
+  box-shadow: 0 0 32px 0 rgba(128, 82, 255, 0.6);
 }
 
 .btn-primary-pill:active {
@@ -218,16 +176,19 @@ p, .font-body-ultralight {
 /* Ghost links */
 .ghost-link {
   color: #9a9a9a;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.06em;
   text-decoration: none;
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ghost-link:hover, .ghost-link.active {
@@ -237,28 +198,76 @@ p, .font-body-ultralight {
 /* Amber accent link */
 .accent-link {
   color: #ffb829;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.025em;
+  letter-spacing: 0.06em;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  transition: opacity 0.2s ease;
+  gap: 8px;
+  transition: all 0.2s ease;
 }
 
 .accent-link:hover {
-  opacity: 0.85;
+  color: #ffc95c;
+  transform: translateX(2px);
 }
 
 /* Amber small section label */
 .section-label {
   color: #ffb829;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.35px;
+  letter-spacing: 0.2em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.section-label::before {
+  content: '';
   display: inline-block;
-  margin-bottom: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ffb829;
+}
+
+/* Glass Console Surface: ultra-clean, minimal, translucent */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  backdrop-filter: blur(12px);
+  transition: border-color 0.3s ease, background 0.3s ease;
+}
+
+.glass-surface:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+/* Code terminal header */
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.terminal-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
 }

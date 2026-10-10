@@ -78,34 +78,34 @@ export const HybridRAGSection: React.FC = () => {
   const results = SAMPLE_KNOWLEDGE[activeQueryKey] || SAMPLE_KNOWLEDGE.webhook;
 
   return (
-    <section id="rag" className="relative w-full bg-black py-20 md:py-32 overflow-hidden border-t border-white/[0.04]">
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-10">
+    <section id="rag" className="relative w-full bg-black py-28 md:py-36 overflow-hidden border-t border-white/[0.05]">
+      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12">
         
         {/* Section Header */}
-        <div className="mb-14">
+        <div className="mb-16">
           <span className="section-label">
             ZERO-DOCKER HYBRID RETRIEVAL (RAG)
           </span>
-          <h2 className="text-white text-[38px] sm:text-[54px] md:text-[68px] lg:text-[78px] font-normal leading-[1.08] tracking-[-1.8px] sm:tracking-[-2.6px] md:tracking-[-3.12px] mb-4">
+          <h2 className="text-white text-[42px] sm:text-[56px] md:text-[72px] lg:text-[78px] font-normal leading-[1.08] tracking-[-0.038em] mb-5">
             Lexical BM25 meets semantic dense fusion.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] max-w-[580px]">
+          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[560px] leading-[1.7]">
             Combines pure-Python <code className="text-white font-mono text-sm">PureBM25Index</code> with local SQLite Chroma embeddings via Reciprocal Rank Fusion (RRF), running locally with zero Docker overhead.
           </p>
         </div>
 
         {/* Interactive Query Bench */}
-        <div className="space-y-8">
+        <div className="space-y-8 max-w-[1040px]">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[#9a9a9a] text-xs font-mono uppercase tracking-wider">
-              Query Test Bench:
+              Query Bench:
             </span>
             <button
               type="button"
               onClick={() => setActiveQueryKey('webhook')}
-              className={`text-xs px-3.5 py-2 rounded-full border-none cursor-pointer transition-colors ${
+              className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-colors font-mono ${
                 activeQueryKey === 'webhook'
-                  ? 'bg-[#8052ff] text-white font-medium'
+                  ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
                   : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
               }`}
             >
@@ -114,9 +114,9 @@ export const HybridRAGSection: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveQueryKey('oauth')}
-              className={`text-xs px-3.5 py-2 rounded-full border-none cursor-pointer transition-colors ${
+              className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-colors font-mono ${
                 activeQueryKey === 'oauth'
-                  ? 'bg-[#8052ff] text-white font-medium'
+                  ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
                   : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
               }`}
             >
@@ -125,9 +125,9 @@ export const HybridRAGSection: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveQueryKey('consensus')}
-              className={`text-xs px-3.5 py-2 rounded-full border-none cursor-pointer transition-colors ${
+              className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-colors font-mono ${
                 activeQueryKey === 'consensus'
-                  ? 'bg-[#8052ff] text-white font-medium'
+                  ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
                   : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
               }`}
             >
@@ -140,20 +140,20 @@ export const HybridRAGSection: React.FC = () => {
             {results.map((doc) => (
               <div
                 key={doc.id}
-                className="p-6 rounded-[22px] bg-white/[0.02] border border-white/[0.05] space-y-3"
+                className="glass-surface p-7 space-y-3"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <span className="text-white text-[18px] font-normal">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <span className="text-white text-[19px] font-normal">
                     {doc.title}
                   </span>
                   <div className="flex items-center gap-3 text-xs font-mono">
-                    <span className="text-[#ffb829]">BM25 Rank #{doc.bm25_rank}</span>
-                    <span className="text-[#8052ff]">Vector Rank #{doc.vector_rank}</span>
+                    <span className="text-[#ffb829] bg-[#ffb829]/10 px-2.5 py-1 rounded-full border border-[#ffb829]/20">BM25 #{doc.bm25_rank}</span>
+                    <span className="text-[#8052ff] bg-[#8052ff]/10 px-2.5 py-1 rounded-full border border-[#8052ff]/20">Vector #{doc.vector_rank}</span>
                     <span className="text-[#15846e] font-bold">RRF: {doc.rrf_score.toFixed(4)}</span>
                   </div>
                 </div>
 
-                <p className="text-[#bdbdbd] font-[200] text-sm leading-relaxed">
+                <p className="text-[#bdbdbd] font-[200] text-[15px] leading-relaxed">
                   {doc.snippet}
                 </p>
 
@@ -164,8 +164,8 @@ export const HybridRAGSection: React.FC = () => {
             ))}
           </div>
 
-          <div className="text-xs font-mono text-[#9a9a9a] pt-4">
-            Formula: <code className="text-[#ffb829]">RRF_Score(d) = Σ [ 1 / (60 + Rank(d)) ]</code> across BM25 & Dense embeddings.
+          <div className="text-xs font-mono text-[#9a9a9a] pt-2">
+            Formula: <code className="text-[#ffb829]">RRF_Score(d) = Σ [ 1 / (60 + Rank(d)) ]</code> across BM25 lexical & Dense SQLite embeddings.
           </div>
         </div>
 

@@ -17,8 +17,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-black/85 backdrop-blur-md w-full border-b border-white/[0.04]">
-      <div className="max-w-[1280px] mx-auto px-6 md:px-10 h-20 flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-50 w-full bg-black/60 backdrop-blur-xl border-b border-white/[0.05] transition-all">
+      <div className="max-w-[1280px] mx-auto px-6 md:px-12 h-20 flex items-center justify-between">
         {/* Brand Logo Lockup */}
         <a
           href="#"
@@ -26,41 +26,44 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
             e.preventDefault();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
-          className="flex items-center gap-3 group text-decoration-none"
+          className="flex items-center gap-3.5 group text-decoration-none select-none"
         >
-          {/* Triangular brand icon with violet to deep verdant gradient */}
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="transition-transform duration-300 group-hover:scale-110">
-            <defs>
-              <linearGradient id="codebrainNavGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#8052ff" />
-                <stop offset="100%" stopColor="#15846e" />
-              </linearGradient>
-            </defs>
-            <polygon points="12,2 22,20 2,20" fill="url(#codebrainNavGrad)" />
-          </svg>
-          <div className="flex flex-col">
-            <span className="text-white text-[18px] font-normal tracking-[-0.4px] select-none leading-tight">
+          {/* Triangular brand glyph with Electric Iris to Deep Verdant gradient */}
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 bg-[#8052ff] opacity-40 blur-md rounded-full group-hover:opacity-75 transition-opacity" />
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="relative transition-transform duration-300 group-hover:scale-105">
+              <defs>
+                <linearGradient id="navBrandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#8052ff" />
+                  <stop offset="100%" stopColor="#15846e" />
+                </linearGradient>
+              </defs>
+              <polygon points="12,2 22,20 2,20" fill="url(#navBrandGrad)" />
+            </svg>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-white text-[19px] font-normal tracking-[-0.03em]">
               CodeBrain
             </span>
-            <span className="text-[#9a9a9a] text-[10px] tracking-[0.08em] uppercase font-mono">
-              Autonomous QA Engine
+            <span className="text-[#9a9a9a] text-[10px] font-mono uppercase tracking-[0.15em] hidden sm:inline">
+              Core
             </span>
           </div>
         </a>
 
         {/* Desktop Nav Items */}
-        <nav className="hidden lg:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-9">
           <button
             onClick={() => scrollTo('pipeline')}
             className={`ghost-link transition-colors ${activeSection === 'pipeline' ? 'text-white' : 'text-[#9a9a9a]'}`}
           >
-            Pipeline Studio
+            Studio
           </button>
           <button
             onClick={() => scrollTo('agents')}
             className={`ghost-link transition-colors ${activeSection === 'agents' ? 'text-white' : 'text-[#9a9a9a]'}`}
           >
-            Agent Roster
+            Agents
           </button>
           <button
             onClick={() => scrollTo('apirunner')}
@@ -86,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
         <div className="flex items-center gap-4">
           <button
             onClick={onLaunchPipeline}
-            className="btn-primary-pill"
+            className="btn-primary-pill shadow-[0_0_20px_-3px_rgba(128,82,255,0.4)]"
           >
             Launch Auto-Pilot
           </button>
@@ -97,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
             className="lg:hidden text-[#9a9a9a] hover:text-white p-2 focus:outline-none"
             aria-label="Toggle Menu"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               {mobileMenuOpen ? (
                 <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
               ) : (
@@ -110,18 +113,18 @@ export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection 
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-black px-6 py-6 flex flex-col gap-5 border-t border-white/[0.05]">
+        <div className="lg:hidden bg-black/95 backdrop-blur-2xl px-6 py-8 flex flex-col gap-6 border-b border-white/[0.08]">
           <button
             onClick={() => scrollTo('pipeline')}
             className="ghost-link text-left text-base text-white"
           >
-            Pipeline Studio
+            Studio
           </button>
           <button
             onClick={() => scrollTo('agents')}
             className="ghost-link text-left text-base text-white"
           >
-            Agent Roster
+            Agents
           </button>
           <button
             onClick={() => scrollTo('apirunner')}

@@ -1,204 +1,195 @@
 import React, { useState } from 'react';
 
 interface LayerInfo {
-  id: string;
   number: string;
   title: string;
-  role: string;
-  components: Array<{ name: string; path: string; description: string }>;
+  tagline: string;
+  modules: Array<{ name: string; file: string; detail: string }>;
 }
 
 const LAYERS: LayerInfo[] = [
   {
-    id: 'presentation',
     number: '01',
     title: 'Presentation & CLI Layer',
-    role: 'Multi-interface access: reactive web UI, standalone edge showcase, and headless CI runner',
-    components: [
+    tagline: 'Reactive HTML5 UI, edge-ready React showcase, and headless CI runner',
+    modules: [
       {
         name: 'Auto-Pilot QA Pipeline',
-        path: 'apps/core/templates/pipeline.html',
-        description: 'Unified 4-step stepper with real-time SSE telemetry streams and direct TMS exports.',
+        file: 'apps/core/templates/pipeline.html',
+        detail: '4-step stepper with real-time SSE progress events and direct TMS exports.',
       },
       {
         name: 'React 19 Vite Edge Showcase',
-        path: 'frontend/src/',
-        description: 'Pure-void design system, high-speed static edge deployment with vercel.json.',
+        file: 'frontend/src/',
+        detail: 'Pure-void design system, high-speed static edge deployment with vercel.json.',
       },
       {
         name: 'Headless CI/CD Runner',
-        path: 'apps/core/management/commands/run_test_suite.py',
-        description: 'Executes automated test suites in CI pipelines with JUnit XML and JSON summaries.',
+        file: 'apps/core/management/commands/run_test_suite.py',
+        detail: 'Runs automated test suites in CI pipelines with JUnit XML and JSON summaries.',
       },
     ],
   },
   {
-    id: 'agents',
     number: '02',
     title: 'Application & Agent Layer',
-    role: 'Autonomous Actor-Critic reflection, Pydantic v2 schemas, and closed-loop HTTPX execution',
-    components: [
+    tagline: 'Autonomous Actor-Critic reflection, Pydantic v2 schemas, and closed-loop HTTPX execution',
+    modules: [
       {
         name: 'ActorCriticReflectionEngine',
-        path: 'apps/ai_agents/common/orchestrator.py',
-        description: 'Iterative Generator ⇄ Reviewer feedback loop with monotonic regression safeguards.',
+        file: 'apps/ai_agents/common/orchestrator.py',
+        detail: 'Iterative Generator ⇄ Reviewer feedback loop with monotonic regression safeguards.',
       },
       {
         name: 'Async APITestRunner',
-        path: 'apps/ai_agents/iface_case_generator/runner.py',
-        description: 'Concurrent httpx engine with DNS IP pinning, TLS verification, and SSRF guards.',
+        file: 'apps/ai_agents/iface_case_generator/runner.py',
+        detail: 'Concurrent httpx engine with DNS IP pinning, TLS verification, and SSRF guards.',
       },
       {
         name: 'Enterprise Exporters',
-        path: 'apps/core/exporters/',
-        description: 'Pluggable Jira Cloud, TestRail, XMind (.xmind), and JUnit XML exporters.',
+        file: 'apps/core/exporters/',
+        detail: 'Pluggable Jira Cloud, TestRail, XMind (.xmind), and JUnit XML exporters.',
       },
     ],
   },
   {
-    id: 'services',
     number: '03',
     title: 'Service & Universal LLM Layer',
-    role: 'Multi-provider LLM abstraction with thread-safe progress and SSE stream producers',
-    components: [
+    tagline: 'Multi-provider LLM abstraction with thread-safe progress and SSE stream producers',
+    modules: [
       {
         name: 'Universal LLMServiceFactory',
-        path: 'apps/llm/base.py',
-        description: 'Instantiates DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom OpenAI-compatible endpoints.',
+        file: 'apps/llm/base.py',
+        detail: 'Instantiates DeepSeek, Qwen, OpenAI, Ollama, Groq, and custom vLLM endpoints.',
       },
       {
         name: 'ProgressRegistry & SSELogEmitter',
-        path: 'apps/utils/progress_registry.py',
-        description: 'Thread-safe background progress registry yielding SSE events to the browser.',
+        file: 'apps/utils/progress_registry.py',
+        detail: 'Thread-safe background progress registry yielding SSE events to the browser.',
       },
       {
         name: 'TaskContext Lifecycle Manager',
-        path: 'apps/utils/logger_manager.py',
-        description: 'Context-scoped thread-local logging and task isolation.',
+        file: 'apps/utils/logger_manager.py',
+        detail: 'Context-scoped thread-local logging and task isolation.',
       },
     ],
   },
   {
-    id: 'storage',
     number: '04',
     title: 'Storage & Zero-Docker Hybrid RAG',
-    role: 'Zero-Docker local vector store, BM25 lexical search, and RRF fusion',
-    components: [
+    tagline: 'Zero-Docker local vector store, BM25 lexical search, and RRF fusion',
+    modules: [
       {
         name: 'PersistentSQLiteVectorStore',
-        path: 'apps/knowledge/chroma_store.py',
-        description: 'Local vector store operating without external Docker containers.',
+        file: 'apps/knowledge/chroma_store.py',
+        detail: 'Local vector store operating without external Docker containers.',
       },
       {
         name: 'PureBM25 + Dense RRF',
-        path: 'apps/knowledge/hybrid_retriever.py',
-        description: 'Reciprocal Rank Fusion uniting lexical keywords and semantic embeddings.',
+        file: 'apps/knowledge/hybrid_retriever.py',
+        detail: 'Reciprocal Rank Fusion uniting lexical keywords and semantic embeddings.',
       },
       {
         name: 'Dual Relational Engine',
-        path: 'config/settings.py',
-        description: 'SQLite for zero-config local development; switches to MySQL 8.x when USE_MYSQL=true.',
+        file: 'config/settings.py',
+        detail: 'SQLite for zero-config local development; switches to MySQL 8.x when USE_MYSQL=true.',
       },
     ],
   },
 ];
 
 export const ArchitectureSection: React.FC = () => {
-  const [activeLayerId, setActiveLayerId] = useState<string>('agents');
-  const activeLayer = LAYERS.find((l) => l.id === activeLayerId) || LAYERS[1];
+  const [selectedLayerIndex, setSelectedLayerIndex] = useState<number>(1);
+  const activeLayer = LAYERS[selectedLayerIndex];
 
   return (
-    <section id="architecture" className="relative w-full bg-black py-20 md:py-32 overflow-hidden border-t border-white/[0.04]">
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-10">
+    <section id="architecture" className="relative w-full bg-black py-28 md:py-36 overflow-hidden border-t border-white/[0.05]">
+      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12">
         
         {/* Section Header */}
-        <div className="mb-14">
+        <div className="mb-16">
           <span className="section-label">
             SYSTEM ARCHITECTURE & INVARIANTS
           </span>
-          <h2 className="text-white text-[38px] sm:text-[54px] md:text-[68px] lg:text-[78px] font-normal leading-[1.08] tracking-[-1.8px] sm:tracking-[-2.6px] md:tracking-[-3.12px] mb-4">
+          <h2 className="text-white text-[42px] sm:text-[56px] md:text-[72px] lg:text-[78px] font-normal leading-[1.08] tracking-[-0.038em] mb-5">
             Four layers of deterministic quality.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] max-w-[580px]">
+          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[560px] leading-[1.7]">
             Engineered with strict architectural invariants: bounded latency, zero-Docker standalone execution, and monotonic regression safeguards.
           </p>
         </div>
 
-        {/* 4 Layers Tabs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          {LAYERS.map((layer) => {
-            const isActive = layer.id === activeLayerId;
+        {/* 4 Layers Architectural Stack */}
+        <div className="space-y-4 mb-16">
+          {LAYERS.map((layer, idx) => {
+            const isSelected = selectedLayerIndex === idx;
+
             return (
-              <button
-                key={layer.id}
-                onClick={() => setActiveLayerId(layer.id)}
-                className={`p-5 rounded-[20px] text-left transition-all duration-200 border-none cursor-pointer ${
-                  isActive
-                    ? 'bg-white/[0.08] text-white'
-                    : 'bg-white/[0.02] text-[#9a9a9a] hover:bg-white/[0.04] hover:text-white'
+              <div
+                key={layer.number}
+                onClick={() => setSelectedLayerIndex(idx)}
+                className={`p-7 rounded-[22px] cursor-pointer transition-all duration-300 ${
+                  isSelected
+                    ? 'glass-surface bg-white/[0.03]'
+                    : 'bg-white/[0.01] hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
-                <div className="text-xs font-mono text-[#8052ff] mb-1">
-                  LAYER {layer.number}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex items-center gap-6">
+                    <span className="text-[#8052ff] font-mono text-sm tracking-widest font-bold">
+                      {layer.number}
+                    </span>
+                    <h3 className="text-white text-[20px] sm:text-[24px] font-normal tracking-[-0.02em]">
+                      {layer.title}
+                    </h3>
+                  </div>
+                  <span className="text-[#9a9a9a] font-[200] text-sm md:text-right max-w-[420px]">
+                    {layer.tagline}
+                  </span>
                 </div>
-                <div className="text-sm font-normal text-white">
-                  {layer.title}
-                </div>
-              </button>
+
+                {/* Expanded Submodules */}
+                {isSelected && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-8 mt-6 border-t border-white/[0.06] animate-fadeIn">
+                    {layer.modules.map((m) => (
+                      <div
+                        key={m.name}
+                        className="bg-black/60 p-5 rounded-[16px] border border-white/[0.04] space-y-2"
+                      >
+                        <div className="text-white text-[16px] font-normal">
+                          {m.name}
+                        </div>
+                        <div className="text-xs font-mono text-[#8052ff] truncate">
+                          {m.file}
+                        </div>
+                        <p className="text-[#bdbdbd] font-[200] text-xs leading-relaxed">
+                          {m.detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
 
-        {/* Active Layer Details */}
-        <div className="bg-white/[0.02] rounded-[24px] p-8 md:p-12 border border-white/[0.06] space-y-8">
-          <div>
-            <div className="text-[#ffb829] text-xs font-mono uppercase tracking-wider mb-2">
-              Layer Role & Scope
-            </div>
-            <h3 className="text-white text-[24px] sm:text-[30px] font-normal mb-2">
-              {activeLayer.title}
-            </h3>
-            <p className="text-[#bdbdbd] font-[200] text-[17px]">
-              {activeLayer.role}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-            {activeLayer.components.map((comp) => (
-              <div
-                key={comp.name}
-                className="bg-black/60 p-6 rounded-[20px] border border-white/[0.04] space-y-3"
-              >
-                <div className="text-white text-[17px] font-normal">
-                  {comp.name}
-                </div>
-                <div className="text-xs font-mono text-[#8052ff] truncate">
-                  {comp.path}
-                </div>
-                <p className="text-[#bdbdbd] font-[200] text-xs leading-relaxed">
-                  {comp.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Architectural Invariants floating on void */}
-        <div className="mt-16 pt-10 border-t border-white/[0.06]">
-          <span className="text-[#9a9a9a] text-[12px] uppercase tracking-wider font-mono block mb-6">
+        {/* Guaranteed Invariants */}
+        <div className="pt-10 border-t border-white/[0.06]">
+          <span className="text-[#9a9a9a] text-[11px] uppercase tracking-[0.15em] font-mono block mb-8">
             Guaranteed Architectural Invariants
           </span>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             <div>
-              <div className="text-white text-[16px] font-normal mb-1">
-                1. Bounded Iterations (Max = 2)
+              <div className="text-white text-[18px] font-normal mb-2">
+                1. Bounded Iterations (Bound = 2)
               </div>
               <p className="text-[#bdbdbd] font-[200] text-sm leading-relaxed">
-                Prevents infinite feedback loops and non-deterministic cloud bill spikes. Reflection is strictly bounded.
+                Prevents infinite feedback loops and non-deterministic cloud latency spikes. Reflection is strictly bounded.
               </p>
             </div>
             <div>
-              <div className="text-white text-[16px] font-normal mb-1">
+              <div className="text-white text-[18px] font-normal mb-2">
                 2. Monotonic Regression Safeguard
               </div>
               <p className="text-[#bdbdbd] font-[200] text-sm leading-relaxed">
@@ -206,11 +197,11 @@ export const ArchitectureSection: React.FC = () => {
               </p>
             </div>
             <div>
-              <div className="text-white text-[16px] font-normal mb-1">
-                3. Zero-Docker Local RAG
+              <div className="text-white text-[18px] font-normal mb-2">
+                3. Zero-Docker Standalone RAG
               </div>
               <p className="text-[#bdbdbd] font-[200] text-sm leading-relaxed">
-                All development and testing operates locally without requiring running Docker containers or heavy vector clusters.
+                All development and testing operates locally without requiring external Docker containers or heavy vector clusters.
               </p>
             </div>
           </div>

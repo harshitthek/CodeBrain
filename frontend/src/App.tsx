@@ -14,7 +14,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     const handleScroll = () => {
       const sections = ['pipeline', 'agents', 'apirunner', 'architecture', 'rag'];
-      const scrollPosition = window.scrollY + 250;
+      const scrollPosition = window.scrollY + 280;
 
       for (const sectionId of sections) {
         const el = document.getElementById(sectionId);
@@ -42,6 +42,9 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white relative flex flex-col selection:bg-[#8052ff] selection:text-white">
+      {/* Deep Space Atmospheric Ambient Glow */}
+      <div className="ambient-glow" />
+
       {/* Top Navigation */}
       <Navbar
         onLaunchPipeline={scrollToPipeline}
@@ -49,7 +52,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Sections */}
-      <main className="flex-1 w-full">
+      <main className="flex-1 w-full relative z-10">
         {/* Hero Section with 3D Constellation Brain */}
         <HeroSection onLaunchPipeline={scrollToPipeline} />
 

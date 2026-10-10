@@ -6,37 +6,37 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ onLaunchPipeline }) => {
   return (
-    <footer className="relative w-full bg-black py-20 border-t border-white/[0.04]">
-      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-10">
+    <footer className="relative w-full bg-black py-24 border-t border-white/[0.05]">
+      <div className="max-w-[1280px] w-full mx-auto px-6 md:px-12">
         
         {/* Top footer row */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-10 pb-16">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3.5">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <defs>
-                <linearGradient id="footerGradCB" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="footerGradCB2" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#8052ff" />
                   <stop offset="100%" stopColor="#15846e" />
                 </linearGradient>
               </defs>
-              <polygon points="12,2 22,20 2,20" fill="url(#footerGradCB)" />
+              <polygon points="12,2 22,20 2,20" fill="url(#footerGradCB2)" />
             </svg>
             <div className="flex flex-col">
-              <span className="text-white text-[18px] font-normal tracking-tight">
+              <span className="text-white text-[19px] font-normal tracking-[-0.03em]">
                 CodeBrain
               </span>
-              <span className="text-[#9a9a9a] text-[11px] font-mono tracking-wider">
-                Autonomous Quality Platform
+              <span className="text-[#9a9a9a] text-[10px] font-mono tracking-[0.12em] uppercase">
+                Autonomous Quality Architecture
               </span>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-8 md:gap-10">
+          <div className="flex flex-wrap items-center gap-8 md:gap-11">
             <a href="#pipeline" className="ghost-link">
-              Pipeline Studio
+              Studio
             </a>
             <a href="#agents" className="ghost-link">
-              Agent Roster
+              Agents
             </a>
             <a href="#apirunner" className="ghost-link">
               HTTPX Runner
@@ -49,7 +49,7 @@ export const Footer: React.FC<FooterProps> = ({ onLaunchPipeline }) => {
             </a>
             <button
               onClick={onLaunchPipeline}
-              className="accent-link text-[14px]"
+              className="accent-link"
             >
               Launch Auto-Pilot →
             </button>
