@@ -1,131 +1,190 @@
-import React, { useState } from 'react';
-import { scrollToElement } from '../utils/smoothScroll';
+import React from 'react';
+
+export type SheetPageId = 'hero' | 'pipeline' | 'apirunner' | 'rag' | 'agents';
 
 interface NavbarProps {
-  onLaunchPipeline: () => void;
-  activeSection?: string;
+  activePage: SheetPageId;
+  onNavigate: (page: SheetPageId) => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onLaunchPipeline, activeSection = 'pipeline' }) => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export const SHEET_PAGES: Array<{
+  id: SheetPageId;
+  num: string;
+  label: string;
+  shortTitle: string;
+  moduleRef: string;
+}> = [
+  {
+    id: 'hero',
+    num: '01',
+    label: 'SHIPPED LEDGER',
+    shortTitle: 'Overview & Shipped Subsystems',
+    moduleRef: 'README.MD · PHASES.MD',
+  },
+  {
+    id: 'pipeline',
+    num: '02',
+    label: 'ORCHESTRATOR',
+    shortTitle: 'Actor-Critic Reflection Loop',
+    moduleRef: 'apps/ai_agents/common/orchestrator.py',
+  },
+  {
+    id: 'apirunner',
+    num: '03',
+    label: 'HTTPX RUNNER',
+    shortTitle: 'Closed-Loop HTTPX & SSRF Guard',
+    moduleRef: 'apps/ai_agents/iface_case_generator/runner.py',
+  },
+  {
+    id: 'rag',
+    num: '04',
+    label: 'HYBRID RAG',
+    shortTitle: 'Zero-Docker SQLite RAG & Parsers',
+    moduleRef: 'apps/knowledge/hybrid_retriever.py',
+  },
+  {
+    id: 'agents',
+    num: '05',
+    label: 'AGENTS & ARCH',
+    shortTitle: '6-Agent Roster & 4-Layer Stack',
+    moduleRef: 'AGENTS.MD · ARCHITECTURE.MD',
+  },
+];
 
-  const handleNavClick = (id: string) => {
-    setMobileMenuOpen(false);
-    scrollToElement(id);
-  };
+export const Navbar: React.FC<NavbarProps> = ({ activePage, onNavigate }) => {
+  const currentMeta =
+    SHEET_PAGES.find((p) => p.id === activePage) || SHEET_PAGES[0];
 
   return (
-    <header className="fixed top-4 left-0 right-0 z-50 flex justify-center px-4 sm:px-6 pointer-events-none">
-      {/* Hallmark N5 Floating Pill Nav: Detached, frosted, precision bounds */}
-      <div className="pointer-events-auto max-w-[1020px] w-full h-[58px] rounded-full bg-[#08080c]/85 backdrop-blur-2xl border border-white/[0.09] shadow-[0_12px_40px_rgba(0,0,0,0.7)] px-5 sm:px-6 flex items-center justify-between transition-all duration-300">
-        
-        {/* Brand Logo Lockup */}
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            scrollToElement('hero', -120);
-          }}
-          className="flex items-center gap-3 group text-decoration-none select-none"
-        >
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 bg-[#8052ff] opacity-40 blur-md rounded-full group-hover:opacity-75 transition-opacity" />
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="relative transition-transform duration-300 group-hover:scale-105">
-              <defs>
-                <linearGradient id="navBrandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#8052ff" />
-                  <stop offset="100%" stopColor="#15846e" />
-                </linearGradient>
-              </defs>
-              <polygon points="12,2 22,20 2,20" fill="url(#navBrandGrad)" />
-            </svg>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-[#f5f5f7] text-[16px] font-normal tracking-[-0.02em]">
-              CodeBrain
-            </span>
-            <span className="text-[#ffb829] text-[9px] font-mono uppercase tracking-[0.18em] font-semibold">
-              CORE
-            </span>
-          </div>
-        </a>
+    <header className="sticky top-0 z-50 bg-[#F2F0EC]/95 backdrop-blur-[2px] border-b border-[#D5D2C9]">
+      {/* Top Archival Sheet Binding Strip */}
+      <div className="w-full h-[10px] bg-[#262523]" />
 
-        {/* Desktop Nav Items */}
-        <nav className="hidden md:flex items-center gap-6 lg:gap-7">
-          {[
-            { id: 'pipeline', label: 'Studio' },
-            { id: 'agents', label: 'Agents' },
-            { id: 'apirunner', label: 'HTTPX Runner' },
-            { id: 'architecture', label: 'Architecture' },
-            { id: 'rag', label: 'Hybrid RAG' },
-          ].map((item) => {
-            const isActive = activeSection === item.id;
+      <div className="max-w-[1180px] mx-auto px-5 sm:px-10 md:px-14 h-[54px] flex items-center justify-between gap-4">
+        {/* Left: Brand Classification */}
+        <button
+          type="button"
+          onClick={() => onNavigate('hero')}
+          className="flex items-center gap-3 bg-transparent border-none p-0 cursor-pointer text-left group"
+        >
+          <span className="meta-label text-[#262523] font-medium tracking-[0.18em] group-hover:text-[#B33920] transition-colors">
+            CODEBRAIN / OPEN SOURCE QA
+          </span>
+        </button>
+
+        {/* Center: 5 Individual Page Tabs */}
+        <nav aria-label="Primary sheet navigation" className="hidden lg:flex items-center gap-1">
+          {SHEET_PAGES.map((item) => {
+            const isActive = activePage === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`ghost-link transition-colors relative py-1 text-[12px] uppercase tracking-[0.06em] font-mono ${
-                  isActive ? 'text-[#f5f5f7] font-semibold' : 'text-[#8e8e98] hover:text-[#f5f5f7]'
+                type="button"
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => onNavigate(item.id)}
+                className={`cursor-pointer px-3 py-1.5 text-[11px] tracking-[0.14em] uppercase transition-colors flex items-center gap-1.5 border ${
+                  isActive
+                    ? 'bg-[#262523] text-[#F2F0EC] border-[#262523] font-semibold'
+                    : 'bg-transparent text-[#625F58] border-transparent hover:text-[#262523] hover:border-[#D5D2C9]'
                 }`}
               >
-                {item.label}
-                {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#8052ff] shadow-[0_0_8px_#8052ff]" />
-                )}
+                <span className={isActive ? 'text-[#D95338]' : 'text-[#625F58]'}>
+                  {item.num}
+                </span>
+                <span>{item.label}</span>
               </button>
             );
           })}
         </nav>
 
-        {/* Right Action: Single Electric Iris Pill Button */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => {
-              onLaunchPipeline();
-              scrollToElement('pipeline');
-            }}
-            className="btn-primary-pill text-[12px] py-2 px-4.5 h-[38px] shadow-[0_0_20px_-3px_rgba(128,82,255,0.4)]"
+        {/* Right: GitHub Repo Link + Active Sheet Indicator + Datum Crosshair */}
+        <div className="flex items-center gap-3.5">
+          <a
+            href="https://github.com/harshitthek/CodeBrain"
+            target="_blank"
+            rel="noreferrer"
+            className="hidden sm:inline-flex text-[11px] tracking-[0.14em] uppercase text-[#262523] hover:text-[#B33920] no-underline font-medium border border-[#262523] px-2.5 py-1 bg-[#EAE7E0]/70 transition-colors"
           >
-            Launch Studio
-          </button>
+            GITHUB REPO ↗
+          </a>
 
-          {/* Mobile hamburger toggle */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-[#8e8e98] hover:text-white p-1.5 focus:outline-none"
-            aria-label="Toggle Menu"
+          {activePage !== 'pipeline' && (
+            <button
+              type="button"
+              onClick={() => onNavigate('pipeline')}
+              className="hidden md:inline-flex text-[11px] tracking-[0.15em] uppercase text-[#B33920] hover:text-[#262523] bg-transparent border-none cursor-pointer font-medium"
+            >
+              [RUN SUITE →]
+            </button>
+          )}
+
+          <span className="meta-label">
+            SHEET {currentMeta.num} / 05
+          </span>
+
+          {/* Top-Right Circular Crosshair Node */}
+          <div
+            className="w-[24px] h-[24px] flex items-center justify-center"
+            title={`Sheet ${currentMeta.num}: ${currentMeta.shortTitle}`}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
-              {mobileMenuOpen ? (
-                <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
-              ) : (
-                <path d="M4 8h16M4 16h16" strokeLinecap="round" strokeLinejoin="round" />
-              )}
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <circle
+                cx="11"
+                cy="11"
+                r="9.5"
+                stroke="#262523"
+                strokeWidth="1.2"
+              />
+              <line
+                x1="7.5"
+                y1="7.5"
+                x2="14.5"
+                y2="14.5"
+                stroke="#262523"
+                strokeWidth="1.2"
+              />
+              <line
+                x1="14.5"
+                y1="7.5"
+                x2="7.5"
+                y2="14.5"
+                stroke="#262523"
+                strokeWidth="1.2"
+              />
             </svg>
-          </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div className="pointer-events-auto absolute top-20 left-4 right-4 bg-[#0a0a0f]/95 backdrop-blur-2xl px-6 py-6 rounded-[24px] border border-white/[0.09] shadow-2xl flex flex-col gap-4 md:hidden">
-          {[
-            { id: 'pipeline', label: 'Studio' },
-            { id: 'agents', label: 'Agents' },
-            { id: 'apirunner', label: 'HTTPX Runner' },
-            { id: 'architecture', label: 'Architecture' },
-            { id: 'rag', label: 'Hybrid RAG' },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item.id)}
-              className="ghost-link text-left text-sm text-[#f5f5f7] py-2 font-mono"
-            >
-              {item.label}
-            </button>
-          ))}
+      {/* Mobile / Tablet Page Switcher Strip */}
+      <nav
+        aria-label="Mobile sheet navigation"
+        className="lg:hidden border-t border-[#D5D2C9] bg-[#EAE7E0]/70 overflow-x-auto"
+      >
+        <div className="max-w-[1180px] mx-auto px-5 flex items-center gap-1 py-1.5">
+          {SHEET_PAGES.map((item) => {
+            const isActive = activePage === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                aria-current={isActive ? 'page' : undefined}
+                onClick={() => onNavigate(item.id)}
+                className={`cursor-pointer px-2.5 py-1 text-[10px] tracking-[0.12em] uppercase whitespace-nowrap border ${
+                  isActive
+                    ? 'bg-[#262523] text-[#F2F0EC] border-[#262523] font-semibold'
+                    : 'bg-transparent text-[#57554F] border-transparent'
+                }`}
+              >
+                <span className={isActive ? 'text-[#D95338] mr-1' : 'text-[#B33920] mr-1'}>
+                  {item.num}
+                </span>
+                {item.label}
+              </button>
+            );
+          })}
         </div>
-      )}
+      </nav>
     </header>
   );
 };
