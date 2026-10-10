@@ -7,11 +7,15 @@ import { APIRunnerSection } from './components/APIRunnerSection';
 import { ArchitectureSection } from './components/ArchitectureSection';
 import { HybridRAGSection } from './components/HybridRAGSection';
 import { Footer } from './components/Footer';
+import { initSmoothScroll, scrollToElement } from './utils/smoothScroll';
 
 export const App: React.FC = () => {
   const [activeSection, setActiveSection] = useState('pipeline');
 
   useEffect(() => {
+    // Initialize darkroomengineering/lenis smooth scroll physics
+    const lenis = initSmoothScroll();
+
     const handleScroll = () => {
       const sections = ['pipeline', 'agents', 'apirunner', 'architecture', 'rag'];
       const scrollPosition = window.scrollY + 280;
@@ -30,50 +34,50 @@ export const App: React.FC = () => {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      lenis?.destroy();
+    };
   }, []);
 
-  const scrollToPipeline = () => {
-    const el = document.getElementById('pipeline');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
+  const handleLaunchPipeline = () => {
+    scrollToElement('pipeline');
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative flex flex-col selection:bg-[#8052ff] selection:text-white">
+    <div className="min-h-screen bg-[#050507] text-[#f5f5f7] relative flex flex-col selection:bg-[#8052ff] selection:text-white bg-noise">
       {/* Deep Space Atmospheric Ambient Glow */}
       <div className="ambient-glow" />
 
-      {/* Top Navigation */}
+      {/* Hallmark N5 Floating Pill Navigation */}
       <Navbar
-        onLaunchPipeline={scrollToPipeline}
+        onLaunchPipeline={handleLaunchPipeline}
         activeSection={activeSection}
       />
 
       {/* Main Content Sections */}
       <main className="flex-1 w-full relative z-10">
-        {/* Hero Section with 3D Constellation Brain */}
-        <HeroSection onLaunchPipeline={scrollToPipeline} />
+        {/* Hallmark H2 Hero Section with 3D Constellation Brain */}
+        <HeroSection onLaunchPipeline={handleLaunchPipeline} />
 
-        {/* Core Interactive Module: Autonomous Actor-Critic Reflection Studio */}
+        {/* Hallmark Macrostructure 15: Split Studio Workbench */}
         <PipelineStudio />
 
-        {/* Agent Roster Deep Dive */}
+        {/* Hallmark Segmented Architectural Dossier */}
         <AgentRosterSection />
 
-        {/* Closed-Loop Async HTTPX Runner */}
+        {/* Hallmark Diagnostic HTTPX Execution Workbench */}
         <APIRunnerSection />
 
         {/* 4-Layer System Architecture & Invariants */}
         <ArchitectureSection />
 
-        {/* Zero-Docker Hybrid RAG */}
+        {/* Zero-Docker Hybrid RAG Query Bench */}
         <HybridRAGSection />
       </main>
 
-      {/* Footer */}
-      <Footer onLaunchPipeline={scrollToPipeline} />
+      {/* Hallmark Ft2 Inline Colophon Footer */}
+      <Footer onLaunchPipeline={handleLaunchPipeline} />
     </div>
   );
 };

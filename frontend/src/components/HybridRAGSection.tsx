@@ -78,7 +78,7 @@ export const HybridRAGSection: React.FC = () => {
   const results = SAMPLE_KNOWLEDGE[activeQueryKey] || SAMPLE_KNOWLEDGE.webhook;
 
   return (
-    <section id="rag" className="relative w-full bg-black py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
+    <section id="rag" className="relative w-full bg-transparent py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
       <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12">
         
         {/* Section Header */}
@@ -86,85 +86,76 @@ export const HybridRAGSection: React.FC = () => {
           <span className="section-label">
             ZERO-DOCKER HYBRID RETRIEVAL (RAG)
           </span>
-          <h2 className="text-white text-[38px] sm:text-[52px] md:text-[64px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
+          <h2 className="text-[#f5f5f7] text-[36px] sm:text-[46px] md:text-[54px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
             Lexical BM25 meets semantic dense fusion.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[580px] leading-[1.7]">
+          <p className="text-[#c2c2cb] font-[200] text-[18px] md:text-[19px] max-w-[620px] leading-[1.7]">
             Combines pure-Python <code className="text-white font-mono text-xs px-2 py-0.5 rounded bg-white/[0.06]">PureBM25Index</code> with local SQLite Chroma embeddings via Reciprocal Rank Fusion (RRF), running locally with zero Docker overhead.
           </p>
         </div>
 
         {/* Interactive Query Bench */}
-        <div className="space-y-8 max-w-[1040px]">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[#9a9a9a] text-xs font-mono uppercase tracking-wider">
+        <div className="space-y-6 max-w-[1040px]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[#8e8e98] text-xs font-mono uppercase tracking-wider">
               Query Bench:
             </span>
-            <button
-              type="button"
-              onClick={() => setActiveQueryKey('webhook')}
-              className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-colors font-mono ${
-                activeQueryKey === 'webhook'
-                  ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
-                  : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
-              }`}
-            >
-              "Payment gateway webhook signature & timeout"
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveQueryKey('oauth')}
-              className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-colors font-mono ${
-                activeQueryKey === 'oauth'
-                  ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
-                  : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
-              }`}
-            >
-              "OAuth2 PKCE token family replay mitigation"
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveQueryKey('consensus')}
-              className={`text-xs px-4 py-2 rounded-full border-none cursor-pointer transition-colors font-mono ${
-                activeQueryKey === 'consensus'
-                  ? 'bg-[#8052ff] text-white font-medium shadow-[0_0_16px_rgba(128,82,255,0.4)]'
-                  : 'bg-white/[0.04] text-[#9a9a9a] hover:text-white'
-              }`}
-            >
-              "Raft quorum majority heartbeat timing"
-            </button>
+            {[
+              { key: 'webhook', label: '"Payment gateway webhook signature & timeout"' },
+              { key: 'oauth', label: '"OAuth2 PKCE token family replay mitigation"' },
+              { key: 'consensus', label: '"Raft quorum majority heartbeat timing"' },
+            ].map((q) => (
+              <button
+                key={q.key}
+                type="button"
+                onClick={() => setActiveQueryKey(q.key)}
+                className={`text-xs px-3.5 py-1.5 rounded-full border cursor-pointer transition-all font-mono ${
+                  activeQueryKey === q.key
+                    ? 'bg-[#8052ff] text-white font-medium border-[#8052ff] shadow-[0_0_16px_rgba(128,82,255,0.4)]'
+                    : 'bg-white/[0.03] text-[#8e8e98] border-white/[0.06] hover:text-white'
+                }`}
+              >
+                {q.label}
+              </button>
+            ))}
           </div>
 
           {/* RRF Results Grid */}
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {results.map((doc) => (
               <div
                 key={doc.id}
-                className="glass-surface p-6 sm:p-7 space-y-3"
+                className="workbench-surface p-6 space-y-2.5"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <span className="text-white text-[18px] sm:text-[19px] font-normal">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <span className="text-white text-[17px] sm:text-[18px] font-normal">
                     {doc.title}
                   </span>
-                  <div className="flex items-center gap-3 text-xs font-mono">
-                    <span className="text-[#ffb829] bg-[#ffb829]/10 px-2.5 py-1 rounded-full border border-[#ffb829]/20">BM25 #{doc.bm25_rank}</span>
-                    <span className="text-[#8052ff] bg-[#8052ff]/10 px-2.5 py-1 rounded-full border border-[#8052ff]/20">Vector #{doc.vector_rank}</span>
-                    <span className="text-[#15846e] font-bold">RRF: {doc.rrf_score.toFixed(4)}</span>
+                  <div className="flex items-center gap-2.5 text-xs font-mono">
+                    <span className="text-[#ffb829] bg-[#ffb829]/10 px-2.5 py-0.5 rounded-full border border-[#ffb829]/20 text-[11px]">
+                      BM25 #{doc.bm25_rank}
+                    </span>
+                    <span className="text-[#8052ff] bg-[#8052ff]/10 px-2.5 py-0.5 rounded-full border border-[#8052ff]/20 text-[11px]">
+                      Vector #{doc.vector_rank}
+                    </span>
+                    <span className="text-[#15846e] font-semibold text-[11px]">
+                      RRF: {doc.rrf_score.toFixed(4)}
+                    </span>
                   </div>
                 </div>
 
-                <p className="text-[#bdbdbd] font-[200] text-[15px] leading-relaxed">
+                <p className="text-[#c2c2cb] font-[200] text-[14px] leading-relaxed">
                   {doc.snippet}
                 </p>
 
-                <div className="text-xs font-mono text-[#9a9a9a] pt-1">
+                <div className="text-[11px] font-mono text-[#8e8e98] pt-0.5">
                   Source: <span className="text-white/80">{doc.source}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="text-xs font-mono text-[#9a9a9a] pt-2">
+          <div className="text-xs font-mono text-[#8e8e98] pt-1">
             Formula: <code className="text-[#ffb829]">RRF_Score(d) = Σ [ 1 / (60 + Rank(d)) ]</code> across BM25 lexical & Dense SQLite embeddings.
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { lenisInstance } from '../utils/smoothScroll';
 
 interface Particle {
   x: number;
@@ -78,8 +79,8 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
     canvas.addEventListener('mouseleave', handleMouseLeave);
 
     const particles: Particle[] = [];
-    const TOTAL_BRAIN_PARTICLES = 1750;
-    const TOTAL_AMBIENT_PARTICLES = 180;
+    const TOTAL_BRAIN_PARTICLES = 1850;
+    const TOTAL_AMBIENT_PARTICLES = 190;
 
     // Generate grand spherical 3D brain shape with dual hemispheres
     const generateBrainCoordinates = (index: number) => {
@@ -89,19 +90,17 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
       const theta = u * 2 * Math.PI;
       const phi = Math.acos(2 * v - 1);
 
-      // Grand volumetric brain radii
+      // Grand volumetric brain radii with sulci/gyri modulation
       const radiusX = 250 + 25 * Math.sin(phi * 4) * Math.cos(theta * 3);
       const radiusY = 220 + 30 * Math.cos(phi * 3);
       const radiusZ = 240 + 25 * Math.sin(theta * 5);
 
-      // Separation between hemispheres
       const separation = 36 * hemisphere;
 
       let x = Math.sin(phi) * Math.cos(theta) * radiusX * 0.86 + separation;
       let y = Math.cos(phi) * radiusY * 0.95;
       let z = Math.sin(phi) * Math.sin(theta) * radiusZ * 0.88;
 
-      // Natural cortical interior and surface scatter
       const internalScatter = 0.8 + Math.random() * 0.28;
       x *= internalScatter;
       y *= internalScatter;
@@ -215,11 +214,16 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
     const render = () => {
       ctx.clearRect(0, 0, width, height);
 
+      // Smooth mouse interpolation
       mouseX += (targetMouseX - mouseX) * 0.05;
       mouseY += (targetMouseY - mouseY) * 0.05;
 
+      // Lenis scroll velocity coupling
+      const scrollVelocity = lenisInstance?.velocity || 0;
+      const velocityTilt = Math.max(-0.35, Math.min(0.35, scrollVelocity * 0.012));
+
       rotationY += 0.0035 + (mouseX / width) * 0.004;
-      rotationX = 0.14 + (mouseY / height) * 0.12;
+      rotationX = 0.14 + (mouseY / height) * 0.12 + velocityTilt;
 
       const cosY = Math.cos(rotationY);
       const sinY = Math.sin(rotationY);
@@ -300,7 +304,7 @@ export const ConstellationCanvas: React.FC<{ className?: string }> = ({ classNam
       <canvas
         ref={canvasRef}
         className="w-full h-full cursor-crosshair block"
-        style={{ background: '#000000' }}
+        style={{ background: 'transparent' }}
       />
     </div>
   );

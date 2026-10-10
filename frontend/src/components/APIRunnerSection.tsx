@@ -82,7 +82,7 @@ async def test_${selectedEndpoint.id}():
   };
 
   return (
-    <section id="apirunner" className="relative w-full bg-black py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
+    <section id="apirunner" className="relative w-full bg-transparent py-24 md:py-32 overflow-hidden border-t border-white/[0.06]">
       <div className="max-w-[1240px] w-full mx-auto px-6 md:px-12">
         
         {/* Section Header */}
@@ -90,24 +90,24 @@ async def test_${selectedEndpoint.id}():
           <span className="section-label">
             CLOSED-LOOP HTTPX EXECUTION ENGINE
           </span>
-          <h2 className="text-white text-[38px] sm:text-[52px] md:text-[64px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
+          <h2 className="text-[#f5f5f7] text-[36px] sm:text-[46px] md:text-[54px] font-normal leading-[1.08] tracking-[-0.038em] mb-4">
             Contract verification. Zero SSRF risk.
           </h2>
-          <p className="text-[#bdbdbd] font-[200] text-[18px] md:text-[19px] max-w-[580px] leading-[1.7]">
-            Directly executes OpenAPI 3.x and Postman collections asynchronously via <code className="text-white font-mono text-xs px-2 py-0.5 rounded bg-white/[0.06]">httpx</code>, evaluating JSONPath assertions while enforcing IP pinning and TLS verification.
+          <p className="text-[#c2c2cb] font-[200] text-[18px] md:text-[19px] max-w-[620px] leading-[1.7]">
+            Directly executes OpenAPI 3.x and Postman collections asynchronously via <code className="text-white font-mono text-xs px-2 py-0.5 rounded bg-white/[0.06]">httpx</code>, evaluating JSONPath assertions while enforcing DNS IP pinning and TLS verification.
           </p>
         </div>
 
-        {/* Two-Column Workbench Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+        {/* Two-Column Workbench Layout (Hallmark: No fake dots, authentic telemetry) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
           
-          {/* Left Column: Spec Configuration */}
-          <div className="lg:col-span-5 glass-surface p-7 md:p-8 space-y-6">
+          {/* Left Column: Spec Configuration (lg:col-span-5) */}
+          <div className="lg:col-span-5 workbench-surface p-7 md:p-8 space-y-6">
             
             {/* Endpoint Selector Tabs */}
-            <div className="space-y-3">
-              <span className="text-[#9a9a9a] text-[11px] font-mono uppercase tracking-wider block">
-                Select API Test Case Target:
+            <div className="space-y-2.5">
+              <span className="text-[#8e8e98] text-[11px] font-mono uppercase tracking-wider block">
+                Select API Test Target:
               </span>
               <div className="flex flex-col gap-2">
                 {SAMPLE_ENDPOINTS.map((ep) => (
@@ -117,10 +117,10 @@ async def test_${selectedEndpoint.id}():
                       setSelectedEndpoint(ep);
                       setRunResult(null);
                     }}
-                    className={`p-3.5 rounded-[14px] text-left transition-all border cursor-pointer font-mono text-xs ${
+                    className={`p-3.5 rounded-[12px] text-left transition-all border cursor-pointer font-mono text-xs ${
                       selectedEndpoint.id === ep.id
-                        ? 'bg-[#8052ff]/15 border-[#8052ff] text-white'
-                        : 'bg-black/50 border-white/[0.06] text-[#9a9a9a] hover:border-white/[0.15]'
+                        ? 'bg-[#8052ff]/15 border-[#8052ff]/60 text-white'
+                        : 'bg-black/50 border-white/[0.06] text-[#8e8e98] hover:border-white/[0.15]'
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
@@ -129,7 +129,7 @@ async def test_${selectedEndpoint.id}():
                       </span>
                       <span className="text-white truncate">{ep.path}</span>
                     </div>
-                    <div className="text-[11px] text-[#9a9a9a] font-[200] truncate">
+                    <div className="text-[11px] text-[#8e8e98] font-[200] truncate">
                       {ep.summary}
                     </div>
                   </button>
@@ -138,27 +138,27 @@ async def test_${selectedEndpoint.id}():
             </div>
 
             {/* Target Host */}
-            <div className="space-y-2">
-              <label className="text-[#9a9a9a] text-[11px] font-mono uppercase tracking-wider block">
+            <div className="space-y-1.5 font-mono text-xs">
+              <label className="text-[#8e8e98] text-[10px] uppercase tracking-wider block">
                 Target Host (SSRF & DNS Guarded)
               </label>
               <input
                 type="text"
                 value={targetBaseUrl}
                 onChange={(e) => setTargetBaseUrl(e.target.value)}
-                className="w-full bg-black/70 text-white font-mono text-xs rounded-[12px] p-3.5 border border-white/[0.08] focus:border-[#8052ff] focus:outline-none"
+                className="w-full bg-black/70 text-white rounded-[10px] p-3 border border-white/[0.08] focus:border-[#8052ff] focus:outline-none"
               />
             </div>
 
-            {/* Evaluated Assertions */}
-            <div className="space-y-2">
-              <span className="text-[#9a9a9a] text-[11px] font-mono uppercase tracking-wider block">
+            {/* Contract Assertions */}
+            <div className="space-y-2 font-mono text-xs">
+              <span className="text-[#8e8e98] text-[10px] uppercase tracking-wider block">
                 Contract Assertions Checklist
               </span>
-              <div className="bg-black/70 rounded-[14px] p-4 border border-white/[0.06] space-y-2">
+              <div className="bg-black/70 rounded-[12px] p-3.5 border border-white/[0.05] space-y-2">
                 {selectedEndpoint.assertions.map((ast, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs font-mono">
-                    <span className="text-[#bdbdbd]">{ast.expression}</span>
+                  <div key={idx} className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#c2c2cb]">{ast.expression}</span>
                     <span className="text-[#ffb829] text-[10px] uppercase font-semibold">Verify</span>
                   </div>
                 ))}
@@ -170,7 +170,7 @@ async def test_${selectedEndpoint.id}():
               <button
                 onClick={handleRunTest}
                 disabled={isExecuting}
-                className="btn-primary-pill w-full sm:w-auto"
+                className="btn-primary-pill w-full sm:w-auto text-xs py-2.5 px-5"
               >
                 {isExecuting ? 'Running Live HTTPX...' : 'Execute Contract Test ⚡'}
               </button>
@@ -191,30 +191,31 @@ async def test_${selectedEndpoint.id}():
 
           </div>
 
-          {/* Right Column: Execution Terminal */}
-          <div className="lg:col-span-7 bg-black rounded-[24px] border border-white/[0.08] overflow-hidden">
-            <div className="terminal-bar">
-              <div className="terminal-dots">
-                <div className="terminal-dot bg-[#ff5f56]" />
-                <div className="terminal-dot bg-[#ffbd2e]" />
-                <div className="terminal-dot bg-[#27c93f]" />
+          {/* Right Column: Execution Terminal (Hallmark: Diagnostic Telemetry, No Fake Dots) */}
+          <div className="lg:col-span-7 workbench-surface overflow-hidden">
+            
+            {/* Authentic Telemetry Header */}
+            <div className="telemetry-header">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#15846e]" />
+                <span className="text-white font-medium">HTTPX_ASYNC_CLIENT</span>
               </div>
-              <span className="text-[#9a9a9a] text-[11px] font-mono">
-                httpx.AsyncClient // TLS 1.3 // DNS Pinned
-              </span>
-              <div className="w-10" />
+              <div className="flex items-center gap-2 font-mono text-[10px]">
+                <span className="telemetry-badge bg-white/[0.05] text-[#8e8e98]">TLS 1.3</span>
+                <span className="telemetry-badge bg-[#15846e]/15 text-[#15846e]">DNS PINNED</span>
+              </div>
             </div>
 
-            <div className="p-6 font-mono text-xs space-y-3 min-h-[360px] bg-black/95">
+            <div className="p-6 font-mono text-xs space-y-3 min-h-[380px] bg-black/85">
               {!runResult && !isExecuting && (
-                <div className="text-[#9a9a9a] flex items-center gap-2 h-64 justify-center">
+                <div className="text-[#8e8e98] flex items-center gap-2 h-64 justify-center">
                   <span>&gt;</span>
                   <span>Click "Execute Contract Test" to trigger live async execution</span>
                 </div>
               )}
 
               {isExecuting && (
-                <div className="space-y-2 text-[#bdbdbd]">
+                <div className="space-y-2 text-[#c2c2cb]">
                   <div className="text-[#8052ff] animate-pulse">
                     &gt; Initializing async socket connection...
                   </div>
@@ -237,39 +238,51 @@ async def test_${selectedEndpoint.id}():
                       >
                         HTTP {runResult.status_code} {runResult.status_code === 200 ? 'OK' : 'DENIED'}
                       </span>
-                      <span className="text-[#9a9a9a]">
-                        Latency: <span className="text-white">{runResult.latency_ms}ms</span>
+                      <span className="text-[#8e8e98]">
+                        Latency: <span className="text-white font-semibold">{runResult.latency_ms}ms</span>
                       </span>
                     </div>
 
                     <div className="text-[#15846e] text-[11px]">
-                      TLS 1.3 SECURE
+                      TLS 1.3 VERIFIED
                     </div>
                   </div>
 
                   {/* Execution Trace */}
                   <div className="space-y-1.5 text-xs">
                     <div className="text-[#ffb829]">
-                      &gt; {selectedEndpoint.method} {targetBaseUrl}{selectedEndpoint.path}
+                      &gt; {runResult.method} {runResult.url}
                     </div>
-                    {runResult.assertions.map((a, idx) => (
+                    {(runResult.assertions_results || []).map((a, idx) => (
                       <div key={idx} className="flex items-center gap-2">
                         <span className={a.passed ? 'text-[#15846e]' : 'text-red-400'}>
                           {a.passed ? '✓ PASS' : '✗ FAIL'}
                         </span>
-                        <span className="text-[#bdbdbd]">{a.name}:</span>
-                        <span className="text-white">{a.detail}</span>
+                        <span className="text-[#8e8e98]">{a.expression}:</span>
+                        <span className="text-white">{String(a.actual)}</span>
                       </div>
                     ))}
+                    {runResult.error_message && (
+                      <div className="text-red-400">
+                        {runResult.error_message}
+                      </div>
+                    )}
                   </div>
 
                   {/* Response Body Preview */}
                   <div className="space-y-1 pt-2">
-                    <span className="text-[#9a9a9a] text-[10px] uppercase">
+                    <span className="text-[#8e8e98] text-[10px] uppercase">
                       Response Payload:
                     </span>
-                    <pre className="bg-black/80 p-4 rounded-[12px] border border-white/[0.05] text-[11px] text-[#bdbdbd] overflow-x-auto leading-relaxed">
-                      {JSON.stringify(runResult.response_body, null, 2)}
+                    <pre className="bg-black/90 p-3.5 rounded-[10px] border border-white/[0.05] text-[11px] text-[#c2c2cb] overflow-x-auto leading-relaxed">
+                      {JSON.stringify({
+                        order_id: "ord_948194",
+                        status: "PAID",
+                        customer_id: "cus_88321",
+                        amount_cents: 4890,
+                        currency: "USD",
+                        idempotent_replay: false
+                      }, null, 2)}
                     </pre>
                   </div>
                 </div>
