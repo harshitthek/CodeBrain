@@ -1,0 +1,23 @@
+# Backend & Python dependencies to exclude from Vercel deployment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.sqlite3
+.pytest_cache/
+apps/
+config/
+videos/
+templates/
+static/
+tests/
+manage.py
+requirements.txt
+migrate_all.sh
+standalone_embed.sh
+prompts_generator.py
+main.py
+pytest.ini
+todo.text
