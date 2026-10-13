@@ -150,6 +150,122 @@ CodeBrain/
 
 ---
 
+## Using CodeBrain in Your Project
+
+CodeBrain exposes a REST API. Once it's running locally, any external project can call it over HTTP — no SDK, no special setup required.
+
+### Step 1 — Start CodeBrain
+
+```bash
+cd path/to/CodeBrain
+.venv\Scripts\activate          # Windows
+source .venv/bin/activate       # Linux / macOS
+
+python manage.py runserver 8000
+```
+
+Leave this terminal running. CodeBrain is now available at `http://localhost:8000`.
+
+---
+
+### Step 2 — Call it from your project
+
+Inside **your own project folder**, create a file (e.g. `generate_tests.py`) and paste:
+
+```python
+import requests
+import json
+
+# Describe the feature you want test cases for
+requirements = """
+User registration:
+- User enters name, email, and password
+- Email must be unique
+- Password must be at least 8 characters
+- On success, send a welcome email
+- On duplicate email, show an error message
+"""
+
+# Send to CodeBrain
+response = requests.post("http://localhost:8000/pipeline/run/", json={
+    "requirements": requirements,
+    "llm_provider": "deepseek",   # or "openai", "groq", "ollama"
+    "min_score": 85.0,            # retry until test quality hits this score
+    "max_iterations": 2,          # max refinement rounds
+    "case_count": 10              # number of test cases to generate
+})
+
+data = response.json()
+
+print(f"Score: {data['final_score']}")
+print(f"Converged: {data['converged']}")
+
+# Print each generated test case
+for case in data["final_cases"]:
+    print(f"\n[{case['priority']}] {case['title']}")
+    print(f"  Steps: {case['test_steps']}")
+    print(f"  Expected: {case['expected_results']}")
+
+# Save to a file in your project
+with open("test_cases.json", "w") as f:
+    json.dump(data["final_cases"], f, indent=2)
+
+print("\nSaved to test_cases.json")
+```
+
+Run it:
+
+```bash
+pip install requests   # only needed once
+python generate_tests.py
+```
+
+You'll get a `test_cases.json` file in your project folder with all generated test cases.
+
+---
+
+### Step 3 (Optional) — Push directly to Jira
+
+If you use Jira, CodeBrain can push the test cases straight to your board:
+
+```python
+requests.post("http://localhost:8000/pipeline/export/", json={
+    "target": "jira",
+    "project_key": "YOUR-PROJECT-KEY",   # e.g. "MAT" for a project called Matiks
+    "cases": data["final_cases"]
+})
+```
+
+Make sure `JIRA_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` are set in CodeBrain's `.env` before running.
+
+---
+
+### Available API Endpoints
+
+| Endpoint | What it does |
+|---|---|
+| `POST /pipeline/run/` | Full Actor-Critic loop — generates + reviews + refines test cases |
+| `POST /test_case_generator/generate/` | Generate test cases only (no review loop) |
+| `POST /test_case_reviewer/review/` | Review and score an existing test suite |
+| `POST /prd_analyzer/analyze/` | Break down a PRD document into test points |
+| `POST /iface_case_generator/generate/` | Generate API contract tests from OpenAPI / Postman spec |
+| `POST /iface_case_generator/execute/` | Run generated API tests live against a real server |
+| `POST /pipeline/export/` | Push a test suite to Jira, TestRail, XMind, or JUnit XML |
+
+---
+
+### Supported LLM Providers
+
+| `llm_provider` value | Required environment variable |
+|---|---|
+| `deepseek` | `DASHSCOPE_API_KEY` |
+| `qwen` | `QWEN_API_KEY` |
+| `openai` | `OPENAI_API_KEY` |
+| `groq` | `GROQ_API_KEY` |
+| `ollama` | none — runs locally |
+
+---
+
 ## Authors & Contributors
 
 - **Harshit Sharma** — [@harshitthek](https://github.com/harshitthek)
