@@ -219,7 +219,10 @@ def create_release_guardian_agent(
         metadata=AGENTVERSE_METADATA,
         readme_path=str(Path(__file__).with_name("README.md")),
         loop=loop,
-        handle_messages_concurrently=True,
+        # Actor-Critic runs make multiple upstream model requests. Serializing
+        # incoming ACP messages prevents ASI:One retries or rapid card taps
+        # from stampeding the provider with overlapping QA generations.
+        handle_messages_concurrently=False,
     )
 
     # Special methods are resolved on the class, so use a small ASGI subclass

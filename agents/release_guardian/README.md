@@ -18,6 +18,8 @@ Use it in ASI:One for requests such as:
 
 The agent accepts natural-language chat and ASI:One form/review-card selections. Its output is a QA plan with test steps and expected results, followed—only after confirmation—by a pass/fail summary of the configured pytest run.
 
+Incoming messages are processed one at a time. This prevents rapid card taps, delivery retries, or parallel ASI:One prompts from producing overlapping Actor–Critic runs; later messages wait for the active response.
+
 **Scope and limits:** it is a QA planning and evidence agent, not a deployment agent. It never deploys code, accepts a repository path or command from chat, persists conversation data, or treats a quality score as release approval.
 
 ## Safety boundary

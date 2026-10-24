@@ -49,6 +49,27 @@ class ReleaseGuardianWorkflow:
         r"(?:requirements?|acceptance criteria)\s*(?:is|are|:|=)\s*[\"'](?P<value>.+?)[\"']",
         re.IGNORECASE | re.DOTALL,
     )
+    _PLANNER_GREETING = re.compile(
+        r"""^\s*
+        (?:(?:the\s+)?user(?:'s)?\s+(?:message|input|text|request)|
+           (?:the\s+)?user\s+(?:said|says|wrote|writes|sent|wants\s+to\s+say))
+        \s*(?:is|was|:|-)?\s*[\"']?
+        (?P<greeting>hi|hello|hey|help|what\s+can\s+you\s+do|what\s+do\s+you\s+do|how\s+does\s+this\s+work)
+        [\"']?(?:\s+to\s+(?:the\s+)?agent)?[.!?]?\s*$""",
+        re.IGNORECASE | re.VERBOSE,
+    )
+    _PLAN_REQUEST = re.compile(
+        r"\b(?:create|generate|build|draft|make|review|analyse|analyze)\b.*\b(?:qa|test|testcase|test case|plan|requirement|acceptance criteria)\b",
+        re.IGNORECASE,
+    )
+    _CAPABILITY_QUESTION = re.compile(
+        r"\b(?:can|could|do|does|what|how)\b.*\?\s*$",
+        re.IGNORECASE | re.DOTALL,
+    )
+    _RESTART_RECOVERY_QUESTION = re.compile(
+        r"\b(?:restart(?:ed|ing)?|reconnect|recover|resubmit(?:ted|ting)?)\b",
+        re.IGNORECASE,
+    )
 
     def __init__(
         self, service: ReleaseGuardianService, sessions: SessionStore | None = None
@@ -99,6 +120,9 @@ class ReleaseGuardianWorkflow:
             return await self.welcome(sender)
         if not requirements:
             return await self.welcome(sender)
+        guidance = self._guidance_response(requirements, selection)
+        if guidance is not None:
+            return WorkflowResponse(guidance, intake_card(self.service.available_targets()))
 
         target_id = str(payload.get("target", "none"))
         case_count = self._case_count(payload.get("case_count", 1))
@@ -180,6 +204,25 @@ class ReleaseGuardianWorkflow:
         normalised = " ".join(text.casefold().split()).strip(".!?")
         return normalised in cls._INTRODUCTION_MESSAGES
 
+    @classmethod
+    def _guidance_response(
+        cls, text: str, selection: dict[str, Any] | None
+    ) -> str | None:
+        """Answer operational questions directly instead of generating irrelevant QA cases."""
+        if selection or cls._PLAN_REQUEST.search(text):
+            return None
+        if cls._RESTART_RECOVERY_QUESTION.search(text):
+            return (
+                "Release Guardian does not persist an unfinished review across a restart. "
+                "Resubmit the feature requirement to create a fresh QA plan; no repository test runs automatically."
+            )
+        if cls._CAPABILITY_QUESTION.search(text):
+            return (
+                "I can create and review a QA plan from a feature requirement, then—only after explicit approval—"
+                "run pytest in one operator-configured repository. I cannot use repository paths from chat or run multiple repositories."
+            )
+        return None
+
     @staticmethod
     def _payload_from_input(
         text: str, selection: dict[str, Any] | None
@@ -203,6 +246,9 @@ class ReleaseGuardianWorkflow:
         the configured repository suite.
         """
         normalised = " ".join((text or "").casefold().split())
+        greeting_match = cls._PLANNER_GREETING.match(text or "")
+        if greeting_match:
+            return {"requirements": greeting_match.group("greeting")}
         if session.stage == SessionStage.REVIEW:
             if any(
                 phrase in normalised

@@ -282,6 +282,61 @@ def test_workflow_strips_asi_one_routing_mention_before_classifying_a_greeting()
     asyncio.run(exercise_routed_greeting())
 
 
+@pytest.mark.parametrize(
+    "planner_message",
+    [
+        'The user said: "hi"',
+        "User message: hello",
+        "The user wants to say hello to the agent.",
+    ],
+)
+def test_workflow_answers_asi_one_planner_wrapped_greetings(planner_message):
+    def fail_if_called(_requirements, _case_count):
+        raise AssertionError("A planner-wrapped greeting must not start the QA pipeline")
+
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=fail_if_called)
+    )
+
+    async def exercise_greeting():
+        response = await workflow.handle("agent1user", planner_message)
+        assert "CodeBrain Release Guardian" in response.text
+        assert response.card is not None
+
+    asyncio.run(exercise_greeting())
+
+
+@pytest.mark.parametrize(
+    ("question", "expected"),
+    [
+        (
+            "I have several repositories — can you run verification against multiple repos, or use a path I paste here?",
+            "cannot use repository paths from chat or run multiple repositories",
+        ),
+        (
+            "The agent restarted while I was reviewing. Do I need to resubmit the feature requirement?",
+            "does not persist an unfinished review across a restart",
+        ),
+    ],
+)
+def test_workflow_answers_operational_questions_without_starting_the_qa_pipeline(
+    question, expected
+):
+    def fail_if_called(_requirements, _case_count):
+        raise AssertionError("An operational question must not start the QA pipeline")
+
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=fail_if_called)
+    )
+
+    async def exercise_question():
+        response = await workflow.handle("agent1user", question)
+        assert expected in response.text
+        assert response.card is not None
+
+    asyncio.run(exercise_question())
+
+
 def test_asi_one_key_is_required_for_the_real_pipeline(monkeypatch):
     monkeypatch.delenv("ASI1_API_KEY", raising=False)
     service = ReleaseGuardianService()
@@ -323,6 +378,7 @@ def test_agent_factory_uses_mailbox_only_when_no_public_endpoint_is_configured(
     assert agent.name == "codebrain-release-guardian"
     assert agent.address.startswith("agent1")
     assert agent.agent_type == "mailbox"
+    assert agent._handle_messages_concurrently is False
 
 
 def test_agent_factory_uses_the_public_endpoint_as_direct_acp_transport(monkeypatch):
