@@ -64,7 +64,14 @@ class ReleaseGuardianService:
         )
 
     def available_targets(self) -> list[VerificationTarget]:
-        return self.policy.enabled_targets()
+        ready_targets: list[VerificationTarget] = []
+        for target in self.policy.enabled_targets():
+            try:
+                self._repository_verification(target)
+            except ReleaseGuardianPolicyError:
+                continue
+            ready_targets.append(target)
+        return ready_targets
 
     def build_qa_plan(
         self, requirements: str, case_count: int = 3, target_id: str | None = None
@@ -72,6 +79,8 @@ class ReleaseGuardianService:
         cleaned_requirements = self.policy.validate_requirements(requirements)
         case_count = self.policy.validate_case_count(case_count)
         target = self.policy.get_target(target_id)
+        if target is not None:
+            self._repository_verification(target)
         result = self._run_pipeline(cleaned_requirements, case_count)
         cases = self._normalise_cases(result.get("final_cases", []), case_count)
         if not cases:
@@ -106,8 +115,7 @@ class ReleaseGuardianService:
         return self._run_repository_tests(target)
 
     def _run_repository_tests(self, target: VerificationTarget) -> ExecutionReport:
-        verification = self.policy.repository_verification(target)
-        repository_root = self._git_repository_root(verification.repository_path)
+        verification, repository_root = self._repository_verification(target)
         commit = (
             self._git_value(repository_root, "rev-parse", "--short", "HEAD")
             or "no-commit"
@@ -172,6 +180,13 @@ class ReleaseGuardianService:
                 }
             ],
         )
+
+    def _repository_verification(
+        self, target: VerificationTarget
+    ) -> tuple[Any, Path]:
+        """Validate the configured target before it is shown or approved in chat."""
+        verification = self.policy.repository_verification(target)
+        return verification, self._git_repository_root(verification.repository_path)
 
     @staticmethod
     def _safe_test_environment() -> dict[str, str]:

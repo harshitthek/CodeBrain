@@ -52,22 +52,23 @@ The code is ready for these steps, which require your own Fetch/ASI account and 
 |---|---|
 | Agentverse profile | `PUBLISH: add the public Agentverse profile URL` |
 | Agent address | `agent1q2j6crzl0hvhq8vc3unxqr2t96jeytsqwyzjaw8hzqxppkcvc95nun37g6k` |
-| Direct ACP endpoint | `https://e1a1-14-99-154-34.ngrok-free.app/submit` |
+| Direct ACP endpoint | `https://f3bd-103-207-175-132.ngrok-free.app/submit` (temporary ngrok endpoint; re-run deployment preflight before submitting) |
 | ASI:One demo chat | `PUBLISH: add the shared ASI:One chat URL` |
 | Demo video | `PUBLISH: add the public video URL` |
 
 ### Run the Fetch agent locally
 
-Use Python **3.12 or 3.13** for the uAgents runtime. Copy the safe template, add only your own private values, configure the repository to verify, then run the agent:
+Use Python **3.10–3.13** for the uAgents runtime. Copy the safe template, add only your own private values, configure the repository to verify, then run the agent:
 
 ```bash
 cp .env.example .env
 # Set DJANGO_SECRET_KEY, FETCH_AGENT_SEED, ASI1_API_KEY, and an absolute
 # RELEASE_GUARDIAN_REPO_PATH in .env.
 # ASI1_REQUEST_TIMEOUT defaults to 60 seconds per model request.
-python3.12 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-agent.txt
+python -m pip install -r requirements-agent.txt
+python -m agents.release_guardian.preflight
 python -m agents.release_guardian.agent
 ```
 

@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from uagents import Agent, Context, Protocol
+from uagents.asgi import ASGIServer
 from uagents_core.contrib.protocols.chat import (
     ChatAcknowledgement,
     ChatMessage,
@@ -31,11 +32,24 @@ from .workflow import ReleaseGuardianWorkflow
 
 AGENT_NAME = "codebrain-release-guardian"
 AGENTVERSE_PROFILE_NAME = "CodeBrain"
+AGENTVERSE_METADATA = {
+    "categories": ["developer-tools"],
+    "tags": ["quality-assurance", "test-planning", "release-readiness"],
+}
 AGENT_DESCRIPTION = (
     "Turns product requirements into Actor-Critic QA plans and, after explicit approval, "
     "runs a policy-gated pytest verification in one operator-configured release repository."
 )
 logger = logging.getLogger(__name__)
+
+
+class _SubmitCompatibleASGIServer(ASGIServer):
+    """Accept a root-path webhook while keeping `/submit` as the canonical ACP route."""
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path") in {"", "/"}:
+            scope = {**scope, "path": "/submit"}
+        await super().__call__(scope, receive, send)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -57,9 +71,11 @@ def _public_endpoint(value: str) -> str:
         or parsed.password
         or parsed.query
         or parsed.fragment
+        or parsed.params
+        or parsed.path != "/submit"
     ):
         raise ValueError(
-            "AGENTVERSE_PUBLIC_ENDPOINT must be a public HTTPS URL without credentials or query data."
+            "AGENTVERSE_PUBLIC_ENDPOINT must be a public HTTPS /submit URL without credentials or query data."
         )
 
     try:
@@ -77,31 +93,57 @@ def _public_endpoint(value: str) -> str:
     return endpoint
 
 
-def _runtime_endpoint() -> str | None:
-    """Return the direct ACP endpoint used both by Agentverse and the running agent."""
+def _local_endpoint(port: int) -> str | None:
+    """Validate the optional loopback ACP endpoint used for local testing."""
+    configured = os.getenv("FETCH_AGENT_LOCAL_ENDPOINT", "").strip()
+    if not configured:
+        return None
+    parsed = urlparse(configured)
+    hostname = parsed.hostname
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or not hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+        or parsed.params
+        or parsed.path != "/submit"
+        or parsed.port != port
+    ):
+        raise ValueError(
+            "FETCH_AGENT_LOCAL_ENDPOINT must be an HTTP(S) loopback /submit URL "
+            "on FETCH_AGENT_PORT, without credentials or query data."
+        )
+    try:
+        is_loopback = ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        is_loopback = hostname.lower() == "localhost"
+    if not is_loopback:
+        raise ValueError(
+            "FETCH_AGENT_LOCAL_ENDPOINT must point to localhost or a loopback IP address."
+        )
+    return configured
+
+
+def _runtime_endpoint(port: int) -> str | None:
+    """Return public ACP transport or, for local use, an explicit loopback route."""
     configured = os.getenv("AGENTVERSE_PUBLIC_ENDPOINT", "").strip()
-    return _public_endpoint(configured) if configured else None
+    return _public_endpoint(configured) if configured else _local_endpoint(port)
 
 
 def register_production_agentverse_profile(seed: str) -> bool:
     """Optionally register the deployed chat agent through Agentverse's v2 API."""
-    if not _env_bool("AGENTVERSE_V2_REGISTRATION_ENABLED"):
+    registration = _agentverse_registration_settings()
+    if registration is None:
         return False
-
-    api_key = (
-        os.getenv("AGENTVERSE_API_KEY") or os.getenv("AGENTVERSE_KEY") or ""
-    ).strip()
-    endpoint_value = os.getenv("AGENTVERSE_PUBLIC_ENDPOINT", "")
-    if not api_key or not endpoint_value.strip():
-        raise ValueError(
-            "Set AGENTVERSE_API_KEY and AGENTVERSE_PUBLIC_ENDPOINT before enabling "
-            "AGENTVERSE_V2_REGISTRATION_ENABLED."
-        )
+    api_key, endpoint = registration
 
     try:
         registered = register_chat_agent(
             name=AGENTVERSE_PROFILE_NAME,
-            endpoint=_public_endpoint(endpoint_value),
+            endpoint=endpoint,
             active=True,
             credentials=RegistrationRequestCredentials(
                 agentverse_api_key=api_key,
@@ -113,19 +155,31 @@ def register_production_agentverse_profile(seed: str) -> bool:
                 "Create a focused QA plan from these acceptance criteria.",
                 "Review this release requirement for boundary and exception coverage.",
             ],
-            metadata={
-                "categories": ["developer-tools"],
-                "tags": ["quality-assurance", "test-planning", "release-readiness"],
-                "is_public": "True",
-            },
+            metadata={**AGENTVERSE_METADATA, "is_public": "True"},
         )
-    except AgentverseRequestError as error:
+    except (AgentverseRequestError, OSError, RuntimeError) as error:
         logger.warning(
             "Agentverse v2 registration did not complete (%s); continuing with the configured ACP runtime.",
             error,
         )
         return False
     return bool(registered)
+
+
+def _agentverse_registration_settings() -> tuple[str, str] | None:
+    """Return validated opt-in registration settings without exposing secrets."""
+    if not _env_bool("AGENTVERSE_V2_REGISTRATION_ENABLED"):
+        return None
+    api_key = (
+        os.getenv("AGENTVERSE_API_KEY") or os.getenv("AGENTVERSE_KEY") or ""
+    ).strip()
+    endpoint_value = os.getenv("AGENTVERSE_PUBLIC_ENDPOINT", "")
+    if not api_key or not endpoint_value.strip():
+        raise ValueError(
+            "Set AGENTVERSE_API_KEY (or AGENTVERSE_KEY) and AGENTVERSE_PUBLIC_ENDPOINT "
+            "before enabling AGENTVERSE_V2_REGISTRATION_ENABLED."
+        )
+    return api_key, _public_endpoint(endpoint_value)
 
 
 def configure_django() -> None:
@@ -152,33 +206,64 @@ def create_release_guardian_agent(
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-    endpoint = _runtime_endpoint()
+    port = int(os.getenv("FETCH_AGENT_PORT", "8000"))
+    endpoint = _runtime_endpoint(port)
     agent = Agent(
         name=AGENT_NAME,
-        port=int(os.getenv("FETCH_AGENT_PORT", "8000")),
+        port=port,
         seed=seed,
         endpoint=endpoint,
         mailbox=endpoint is None,
         publish_agent_details=True,
         description=AGENT_DESCRIPTION,
+        metadata=AGENTVERSE_METADATA,
         readme_path=str(Path(__file__).with_name("README.md")),
         loop=loop,
         handle_messages_concurrently=True,
     )
 
-    # Route root-path '/' or empty path requests to '/submit' for seamless webhook compatibility
-    if hasattr(agent, "_server") and hasattr(agent._server, "__call__"):
-        original_asgi_call = agent._server.__call__
-
-        async def _compatible_asgi_call(scope, receive, send):
-            if scope.get("type") == "http" and scope.get("path") in ("", "/"):
-                scope["path"] = "/submit"
-            await original_asgi_call(scope, receive, send)
-
-        agent._server.__call__ = _compatible_asgi_call
+    # Special methods are resolved on the class, so use a small ASGI subclass
+    # rather than assigning ``__call__`` on the server instance.
+    agent._server = _SubmitCompatibleASGIServer(
+        port=port,
+        loop=loop,
+        queries=agent._queries,
+        logger=agent._logger,
+    )
 
     protocol = Protocol(spec=chat_protocol_spec)
     guardian = workflow or ReleaseGuardianWorkflow(ReleaseGuardianService())
+
+    @agent.on_event("startup")
+    async def register_after_listener_starts(_ctx: Context) -> None:
+        """Register only after the uAgent listener has been brought online.
+
+        Agentverse evaluates the registered public endpoint. uAgents schedules
+        startup callbacks before its Uvicorn coroutine gets a chance to bind,
+        so wait for the listener and run blocking registration off the event
+        loop before advertising the endpoint.
+        """
+        if not _env_bool("AGENTVERSE_V2_REGISTRATION_ENABLED"):
+            return
+        wait_seconds = float(os.getenv("AGENTVERSE_LISTENER_WAIT_SECONDS", "10"))
+        deadline = asyncio.get_running_loop().time() + max(wait_seconds, 0)
+        while True:
+            server = agent._server.server
+            if server is not None and server.started:
+                break
+            if asyncio.get_running_loop().time() >= deadline:
+                logger.error(
+                    "Agentverse registration skipped because the local ACP listener did not become ready."
+                )
+                return
+            await asyncio.sleep(0.1)
+        try:
+            registered = await asyncio.to_thread(register_production_agentverse_profile, seed)
+        except ValueError as error:
+            logger.error("Agentverse registration configuration is invalid: %s", error)
+            return
+        if registered:
+            logger.info("Agentverse v2 profile registration completed.")
 
     @protocol.on_message(ChatAcknowledgement)
     async def acknowledge_chat_response(
@@ -219,11 +304,9 @@ def main() -> None:
         )
     configure_django()
     try:
-        registered = register_production_agentverse_profile(seed)
+        _agentverse_registration_settings()
     except ValueError as error:
         raise SystemExit(str(error)) from error
-    if registered:
-        print("Agentverse v2 profile registration completed.")
     agent = create_release_guardian_agent(seed, publish_manifest=True)
     print(f"{AGENT_NAME} address: {agent.address}")
     agent.run()

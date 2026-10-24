@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import subprocess
+from types import SimpleNamespace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -170,6 +171,82 @@ def test_workflow_requires_approval_before_it_runs_the_repository_suite(tmp_path
     asyncio.run(exercise_workflow())
 
 
+def test_workflow_shows_reviewable_cases_and_claims_one_live_check(tmp_path):
+    service = ReleaseGuardianService(
+        policy=configured_policy(make_test_repository(tmp_path)),
+        pipeline_runner=pipeline_result,
+    )
+    workflow = ReleaseGuardianWorkflow(service)
+
+    async def exercise_workflow():
+        response = await workflow.handle(
+            "agent1user",
+            "",
+            {
+                "action": "create_qa_plan",
+                "requirements": "A verified user can reset a password using an email link.",
+                "case_count": "3",
+                "target": "configured_repository",
+            },
+        )
+        assert "Steps: Request reset" in response.text
+        assert "Expected: The password is changed" in response.text
+        assert "Reviewer focus: Exercise a rate-limit boundary" in response.text
+
+        first, second = await asyncio.gather(
+            workflow.handle("agent1user", "", {"action": "approve_live_check"}),
+            workflow.handle("agent1user", "", {"action": "approve_live_check"}),
+        )
+        responses = (first.text, second.text)
+        assert sum("1/1 passed" in text for text in responses) == 1
+        assert sum("already started" in text for text in responses) == 1
+
+    asyncio.run(exercise_workflow())
+
+
+def test_workflow_accepts_asi_one_planner_style_card_responses(tmp_path):
+    service = ReleaseGuardianService(
+        policy=configured_policy(make_test_repository(tmp_path)),
+        pipeline_runner=pipeline_result,
+    )
+    workflow = ReleaseGuardianWorkflow(service)
+
+    async def exercise_workflow():
+        created = await workflow.handle(
+            "agent1user",
+            (
+                'The user submitted the form. Requirements: "A verified user can reset '
+                'a password using an email link." Number of QA cases: 3. '
+                "Optional post-review repository test run: Configured release repository."
+            ),
+        )
+        assert created.card is not None
+        approved = await workflow.handle(
+            "agent1user",
+            "The user selected Approve repository test run.",
+        )
+        assert "1/1 passed" in approved.text
+
+    asyncio.run(exercise_workflow())
+
+
+def test_unavailable_configured_repository_is_not_offered_as_a_target(tmp_path):
+    missing = tmp_path / "does-not-exist"
+    service = ReleaseGuardianService(
+        policy=ReleaseGuardianPolicy(
+            enabled_target_ids=("configured_repository",),
+            repository_path=str(missing),
+        ),
+        pipeline_runner=pipeline_result,
+    )
+    assert service.available_targets() == []
+    with pytest.raises(ReleaseGuardianPolicyError, match="unavailable"):
+        service.build_qa_plan(
+            "A verified user can reset a password using an email link.",
+            target_id="configured_repository",
+        )
+
+
 def test_workflow_answers_a_greeting_without_calling_asi_one():
     def fail_if_called(_requirements, _case_count):
         raise AssertionError("A greeting must not start the ASI:One QA pipeline")
@@ -261,6 +338,101 @@ def test_agent_factory_uses_the_public_endpoint_as_direct_acp_transport(monkeypa
     ]
 
 
+def test_agent_factory_supports_loopback_acp_for_local_testing(monkeypatch):
+    from agents.release_guardian.agent import create_release_guardian_agent
+
+    monkeypatch.delenv("AGENTVERSE_PUBLIC_ENDPOINT", raising=False)
+    monkeypatch.setenv("FETCH_AGENT_PORT", "8123")
+    monkeypatch.setenv(
+        "FETCH_AGENT_LOCAL_ENDPOINT", "http://127.0.0.1:8123/submit"
+    )
+    agent = create_release_guardian_agent(
+        "local direct ACP verification seed", publish_manifest=False
+    )
+    assert agent.agent_type == "custom"
+    assert [endpoint.url for endpoint in agent._endpoints] == [
+        "http://127.0.0.1:8123/submit"
+    ]
+
+
+def test_agent_factory_routes_root_path_webhooks_to_submit(monkeypatch):
+    from agents.release_guardian.agent import create_release_guardian_agent
+
+    monkeypatch.delenv("AGENTVERSE_PUBLIC_ENDPOINT", raising=False)
+    agent = create_release_guardian_agent(
+        "root webhook compatibility verification seed", publish_manifest=False
+    )
+    sent = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    asyncio.run(
+        agent._server(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/",
+                "headers": {b"user-agent": b"release-guardian-test"},
+                "client": ("127.0.0.1", 0),
+            },
+            receive,
+            send,
+        )
+    )
+    assert sent[0]["status"] == 200
+
+
+def test_agent_factory_rejects_non_loopback_local_endpoint(monkeypatch):
+    from agents.release_guardian.agent import create_release_guardian_agent
+
+    monkeypatch.delenv("AGENTVERSE_PUBLIC_ENDPOINT", raising=False)
+    monkeypatch.setenv("FETCH_AGENT_PORT", "8000")
+    monkeypatch.setenv(
+        "FETCH_AGENT_LOCAL_ENDPOINT", "https://agent.example.com/submit"
+    )
+    with pytest.raises(ValueError, match="loopback"):
+        create_release_guardian_agent("invalid local endpoint seed", publish_manifest=False)
+
+
+def test_agentverse_registration_waits_until_the_local_listener_is_ready(monkeypatch):
+    from agents.release_guardian.agent import create_release_guardian_agent
+
+    monkeypatch.setenv("AGENTVERSE_V2_REGISTRATION_ENABLED", "true")
+    monkeypatch.setenv("AGENTVERSE_API_KEY", "agentverse-api-key-for-test")
+    monkeypatch.setenv("AGENTVERSE_PUBLIC_ENDPOINT", "https://agent.example.com/submit")
+    agent = create_release_guardian_agent(
+        "listener-ready verification seed", publish_manifest=False
+    )
+    agent._server._server = SimpleNamespace(started=True)
+    with patch(
+        "agents.release_guardian.agent.register_production_agentverse_profile",
+        return_value=True,
+    ) as register:
+        asyncio.run(agent._on_startup[-1](None))
+    register.assert_called_once_with("listener-ready verification seed")
+
+
+def test_agentverse_registration_skips_when_listener_does_not_become_ready(monkeypatch):
+    from agents.release_guardian.agent import create_release_guardian_agent
+
+    monkeypatch.setenv("AGENTVERSE_V2_REGISTRATION_ENABLED", "true")
+    monkeypatch.setenv("AGENTVERSE_API_KEY", "agentverse-api-key-for-test")
+    monkeypatch.setenv("AGENTVERSE_PUBLIC_ENDPOINT", "https://agent.example.com/submit")
+    monkeypatch.setenv("AGENTVERSE_LISTENER_WAIT_SECONDS", "0")
+    agent = create_release_guardian_agent(
+        "listener-not-ready verification seed", publish_manifest=False
+    )
+    with patch(
+        "agents.release_guardian.agent.register_production_agentverse_profile"
+    ) as register:
+        asyncio.run(agent._on_startup[-1](None))
+    register.assert_not_called()
+
+
 def test_agentverse_v2_registration_is_opt_in_and_uses_public_endpoint(monkeypatch):
     from agents.release_guardian.agent import register_production_agentverse_profile
 
@@ -299,6 +471,16 @@ def test_agentverse_v2_registration_rejects_the_inspector_or_private_endpoint(
         "https://agentverse.ai/inspect/?uri=http://127.0.0.1:8000",
     )
     with pytest.raises(ValueError, match="without credentials or query data"):
+        register_production_agentverse_profile("verification seed")
+
+
+def test_public_endpoint_must_use_the_acp_submit_route(monkeypatch):
+    from agents.release_guardian.agent import register_production_agentverse_profile
+
+    monkeypatch.setenv("AGENTVERSE_V2_REGISTRATION_ENABLED", "true")
+    monkeypatch.setenv("AGENTVERSE_API_KEY", "agentverse-api-key-for-test")
+    monkeypatch.setenv("AGENTVERSE_PUBLIC_ENDPOINT", "https://agent.example.com/status")
+    with pytest.raises(ValueError, match="HTTPS /submit URL"):
         register_production_agentverse_profile("verification seed")
 
     monkeypatch.setenv("AGENTVERSE_PUBLIC_ENDPOINT", "https://127.0.0.1:8000/submit")

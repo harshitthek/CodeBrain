@@ -84,6 +84,13 @@ def review_card(plan: QAPlan) -> MetadataContent:
             label="Finish QA review", selection={"action": "finish_without_check"}
         )
         reject = None
+
+    for index, case in enumerate(plan.test_cases[:3], start=1):
+        rows.append(
+            ReviewSummaryRow(
+                label=f"QA case {index}", value=_truncate(case.title, 140)
+            )
+        )
     return create_card_content(
         ReviewCardPayload(
             title="Review the QA plan before any external call",
@@ -97,3 +104,28 @@ def review_card(plan: QAPlan) -> MetadataContent:
 def card_payload_size(card: MetadataContent) -> int:
     """Expose a testable guard for the ASI card payload limit."""
     return len(card.metadata.get("card_payload", "").encode("utf-8"))
+
+
+def format_plan_for_chat(plan: QAPlan, max_chars: int = 6_000) -> str:
+    """Render the reviewable QA evidence in the ACP text message.
+
+    A review card intentionally contains a compact confirmation summary. The
+    user still needs the actual steps and expected results in the ASI:One
+    conversation before approving an external test run.
+    """
+    lines = ["QA plan to review:"]
+    for index, case in enumerate(plan.test_cases, start=1):
+        lines.append(f"{index}. [{case.priority}] {_truncate(case.title, 240)}")
+        lines.append("   Steps: " + " → ".join(_truncate(step, 300) for step in case.steps))
+        lines.append(
+            "   Expected: "
+            + " | ".join(_truncate(result, 300) for result in case.expected_results)
+        )
+    if plan.reviewer_notes:
+        lines.append("Reviewer focus: " + " | ".join(_truncate(note, 240) for note in plan.reviewer_notes))
+    return _truncate("\n".join(lines), max_chars)
+
+
+def _truncate(value: str, limit: int) -> str:
+    cleaned = " ".join(str(value).split())
+    return cleaned if len(cleaned) <= limit else f"{cleaned[: limit - 1]}…"

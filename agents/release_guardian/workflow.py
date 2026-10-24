@@ -16,7 +16,7 @@ from apps.release_guardian.service import (
     ReleaseGuardianService,
 )
 
-from .cards import intake_card, review_card
+from .cards import format_plan_for_chat, intake_card, review_card
 from .session import SessionStage, SessionStore
 
 
@@ -41,6 +41,14 @@ class ReleaseGuardianWorkflow:
         }
     )
     _ROUTED_AGENT_MENTION = re.compile(r"^\s*@agent1[0-9a-z]+\b\s*", re.IGNORECASE)
+    _CASE_COUNT_IN_PROSE = re.compile(
+        r"(?:case_count|number of qa cases|qa cases)\s*(?:is|:|=)?\s*(\d+)",
+        re.IGNORECASE,
+    )
+    _LABELED_REQUIREMENTS = re.compile(
+        r"(?:requirements?|acceptance criteria)\s*(?:is|are|:|=)\s*[\"'](?P<value>.+?)[\"']",
+        re.IGNORECASE | re.DOTALL,
+    )
 
     def __init__(
         self, service: ReleaseGuardianService, sessions: SessionStore | None = None
@@ -73,9 +81,11 @@ class ReleaseGuardianWorkflow:
             )
 
         payload = self._payload_from_input(text, selection)
+        if not payload:
+            payload = self._planner_payload_from_text(text, session)
         action = str(payload.get("action", "")).strip()
         if action == "approve_live_check":
-            return await self._execute_approved_check(sender, session)
+            return await self._execute_approved_check(sender)
         if action == "finish_without_check":
             await self.sessions.complete(sender)
             return WorkflowResponse(
@@ -119,29 +129,28 @@ class ReleaseGuardianWorkflow:
         return WorkflowResponse(
             text=(
                 f"Created {len(plan.test_cases)} QA cases (quality signal {plan.quality_signal:.1f}/100): "
-                f"{case_titles}. This score is a QA signal, not a release authorization. {target_note}"
+                f"{case_titles}. This score is a QA signal, not a release authorization.\n\n"
+                f"{format_plan_for_chat(plan)}\n\n{target_note}"
             ),
             card=review_card(plan),
         )
 
-    async def _execute_approved_check(
-        self, sender: str, session: Any
-    ) -> WorkflowResponse:
-        if (
-            session.stage != SessionStage.REVIEW
-            or session.plan is None
-            or not session.plan.target_id
-        ):
+    async def _execute_approved_check(self, sender: str) -> WorkflowResponse:
+        plan = await self.sessions.claim_live_check(sender)
+        if plan is None:
             return WorkflowResponse(
-                "There is no pending approved repository test run. Create a QA plan first."
+                "There is no pending repository test run to approve, or it has already started. "
+                "Create a new QA plan if you need another verification."
             )
         try:
             report = await asyncio.to_thread(
-                self.service.execute_live_check, session.plan
+                self.service.execute_live_check, plan
             )
         except ReleaseGuardianPolicyError as error:
+            await self.sessions.complete(sender)
             return WorkflowResponse(str(error))
         except Exception:  # noqa: BLE001 - do not expose network internals or retry a live request.
+            await self.sessions.complete(sender)
             return WorkflowResponse(
                 "The configured repository test run could not complete. No retry was attempted."
             )
@@ -182,3 +191,55 @@ class ReleaseGuardianWorkflow:
         except (TypeError, json.JSONDecodeError):
             return {}
         return decoded if isinstance(decoded, dict) else {}
+
+    @classmethod
+    def _planner_payload_from_text(cls, text: str, session: Any) -> dict[str, Any]:
+        """Accept ASI:One planner prose as well as direct card JSON.
+
+        Interactive-card selections reach an agent as JSON during direct
+        mentions, but the ASI:One planner can relay the same selection in
+        natural language. The workflow only infers an action while a review is
+        pending, preventing incidental words in a new requirement from running
+        the configured repository suite.
+        """
+        normalised = " ".join((text or "").casefold().split())
+        if session.stage == SessionStage.REVIEW:
+            if any(
+                phrase in normalised
+                for phrase in (
+                    "finish without test run",
+                    "finish qa review",
+                    "skip the test run",
+                    "cancel the test run",
+                    "reject the test run",
+                    "do not approve",
+                    "don't approve",
+                )
+            ):
+                return {"action": "finish_without_check"}
+            if any(
+                phrase in normalised
+                for phrase in (
+                    "approve repository test run",
+                    "approve live check",
+                    "confirm repository test run",
+                    "confirm the test run",
+                )
+            ):
+                return {"action": "approve_live_check"}
+
+        requirements_match = cls._LABELED_REQUIREMENTS.search(text or "")
+        requirements = (
+            requirements_match.group("value").strip()
+            if requirements_match
+            else text
+        )
+        payload: dict[str, Any] = {"requirements": requirements}
+        case_match = cls._CASE_COUNT_IN_PROSE.search(text or "")
+        if case_match:
+            payload["case_count"] = case_match.group(1)
+        if "configured_repository" in normalised or "configured release repository" in normalised:
+            payload["target"] = "configured_repository"
+        elif "no test run" in normalised or "qa plan only" in normalised:
+            payload["target"] = "none"
+        return payload
