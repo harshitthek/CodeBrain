@@ -5,6 +5,7 @@ are strictly valid, non-zero, well-formed, and satisfy CodeBrain's enterprise co
 """
 
 import json
+import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
 import pytest
@@ -18,11 +19,23 @@ from apps.core.exporters import (
     _sanitize_excel_text,
 )
 
-TUTORIAL_DIR = (
-    Path("/Users/pernavjain/Documents/Tutorial")
-    if (Path("/Users/pernavjain/Documents/Tutorial") / "rovc_testcases.json").exists()
-    else Path(__file__).resolve().parent.parent / "docs" / "tutorial_qa"
-)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _resolve_export_dir() -> Path:
+    candidates = []
+    if os.getenv("TUTORIAL_DIR"):
+        candidates.append(Path(os.getenv("TUTORIAL_DIR")))
+    candidates.append(BASE_DIR.parent / "Tutorial")
+    candidates.append(BASE_DIR / "docs" / "tutorial_qa")
+    candidates.append(Path("/Users/pernavjain/Documents/Tutorial"))
+    for c in candidates:
+        if (c / "rovc_testcases.json").exists():
+            return c
+    return BASE_DIR / "docs" / "tutorial_qa"
+
+
+TUTORIAL_DIR = _resolve_export_dir()
 JSON_PATH = TUTORIAL_DIR / "rovc_testcases.json"
 XLSX_PATH = TUTORIAL_DIR / "rovc_testcases.xlsx"
 XML_PATH = TUTORIAL_DIR / "junit_testcases.xml"

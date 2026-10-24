@@ -1011,11 +1011,13 @@ def run_rovc_actor_critic_pipeline() -> Dict[str, Any]:
     print(f"\n[Schema] Successfully validated all {len(validated_cases)} test cases against GeneratedTestCaseItem.")
 
     # 5. Save outputs
-    output_dir = "/Users/pernavjain/Documents/CodeBrain/.agents/teamwork/worker_m1"
-    os.makedirs(output_dir, exist_ok=True)
+    base_dir = Path(__file__).resolve().parent.parent.parent.parent
+    default_output_dir = base_dir / "docs" / "tutorial_qa"
+    output_dir = Path(os.getenv("ROVC_OUTPUT_DIR", str(default_output_dir)))
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    converged_suite_path = os.path.join(output_dir, "converged_suite.json")
-    rubric_eval_path = os.path.join(output_dir, "rubric_evaluation.json")
+    converged_suite_path = output_dir / "converged_suite.json"
+    rubric_eval_path = output_dir / "rubric_evaluation.json"
 
     # Prepare structured suite output
     suite_payload = {

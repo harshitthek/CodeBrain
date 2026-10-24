@@ -26,13 +26,35 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import pytest
 
 # Constants
-TUTORIAL_DIR = Path("/Users/pernavjain/Documents/Tutorial")
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _resolve_notebooks_dir() -> Path:
+    candidates = []
+    if os.getenv("TUTORIAL_DIR"):
+        candidates.append(Path(os.getenv("TUTORIAL_DIR")))
+        candidates.append(Path(os.getenv("TUTORIAL_DIR")) / "notebooks")
+    candidates.append(BASE_DIR.parent / "Tutorial")
+    candidates.append(BASE_DIR / "docs" / "tutorial_qa" / "notebooks")
+    candidates.append(BASE_DIR / "docs" / "tutorial_qa")
+    candidates.append(Path("/Users/pernavjain/Documents/Tutorial"))
+    for c in candidates:
+        if (c / "soup-python-repair-tutorial.ipynb").exists():
+            return c
+    return BASE_DIR / "docs" / "tutorial_qa" / "notebooks"
+
+
+TUTORIAL_DIR = _resolve_notebooks_dir()
 NOTEBOOK_NAMES = [
     "soup-python-repair-tutorial.ipynb",
     "bug-whisper-python.ipynb",
     "adapter-model-combine.ipynb",
 ]
-REPORT_DIR = Path("/Users/pernavjain/Documents/CodeBrain/.agents/teamwork/worker_m2")
+REPORT_DIR = (
+    Path(os.getenv("REPORT_DIR"))
+    if os.getenv("REPORT_DIR")
+    else BASE_DIR / "docs" / "tutorial_qa"
+)
 BUILTIN_NAMES = set(dir(builtins)) | {"__file__", "__name__", "__doc__"}
 
 
@@ -863,7 +885,7 @@ def write_verification_artifacts(audit_data: Dict[str, Any]):
         "",
         "**Date:** 2026-10-24  ",
         "**Auditor:** Teamwork Worker M2 (AI/LLM Notebooks Code Integrity & Pipeline Verification)  ",
-        "**Target Directory:** `/Users/pernavjain/Documents/Tutorial`  ",
+        f"**Target Directory:** `{TUTORIAL_DIR}`  ",
         f"**Environment:** Python `{sys.version.split()[0]}` (`sys.version_info={sys.version_info[:3]}`)  ",
         "",
         "---",

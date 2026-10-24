@@ -11,6 +11,7 @@ Empirically challenges:
 
 import copy
 import json
+import os
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -22,11 +23,23 @@ from apps.ai_agents.test_case_generator.schemas import GeneratedTestCaseItem
 from apps.ai_agents.test_case_reviewer.reviewer import TestCaseReviewerAgent
 from apps.core.exporters.excel_exporter import _sanitize_excel_text
 
-TUTORIAL_DIR = (
-    Path("/Users/pernavjain/Documents/Tutorial")
-    if (Path("/Users/pernavjain/Documents/Tutorial") / "rovc_testcases.json").exists()
-    else Path(__file__).resolve().parent.parent / "docs" / "tutorial_qa"
-)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _resolve_export_dir() -> Path:
+    candidates = []
+    if os.getenv("TUTORIAL_DIR"):
+        candidates.append(Path(os.getenv("TUTORIAL_DIR")))
+    candidates.append(BASE_DIR.parent / "Tutorial")
+    candidates.append(BASE_DIR / "docs" / "tutorial_qa")
+    candidates.append(Path("/Users/pernavjain/Documents/Tutorial"))
+    for c in candidates:
+        if (c / "rovc_testcases.json").exists():
+            return c
+    return BASE_DIR / "docs" / "tutorial_qa"
+
+
+TUTORIAL_DIR = _resolve_export_dir()
 JSON_PATH = TUTORIAL_DIR / "rovc_testcases.json"
 XLSX_PATH = TUTORIAL_DIR / "rovc_testcases.xlsx"
 XML_PATH = TUTORIAL_DIR / "junit_testcases.xml"

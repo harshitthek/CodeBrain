@@ -1,6 +1,7 @@
 """Unit and integration tests for DTU ROVC 2026 Test Suite and Actor-Critic Convergence."""
 
 import json
+import os
 from pathlib import Path
 import pytest
 
@@ -8,16 +9,25 @@ from apps.ai_agents.test_case_generator.schemas import GeneratedTestCaseItem
 from apps.ai_agents.test_case_generator.rovc_pipeline_runner import run_rovc_actor_critic_pipeline
 
 
-SUITE_PATH = (
-    Path("/Users/pernavjain/Documents/Tutorial/rovc_testcases.json")
-    if Path("/Users/pernavjain/Documents/Tutorial/rovc_testcases.json").exists()
-    else Path("/Users/pernavjain/Documents/CodeBrain/.agents/teamwork/worker_m1/converged_suite.json")
-)
-RUBRIC_PATH = (
-    Path("/Users/pernavjain/Documents/Tutorial/rovc_rubric.json")
-    if Path("/Users/pernavjain/Documents/Tutorial/rovc_rubric.json").exists()
-    else Path("/Users/pernavjain/Documents/CodeBrain/.agents/teamwork/worker_m1/rubric_evaluation.json")
-)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _resolve_asset(filename: str, fallback_rel: str) -> Path:
+    candidates = []
+    if os.getenv("TUTORIAL_DIR"):
+        candidates.append(Path(os.getenv("TUTORIAL_DIR")) / filename)
+    candidates.append(BASE_DIR.parent / "Tutorial" / filename)
+    candidates.append(BASE_DIR / "docs" / "tutorial_qa" / filename)
+    candidates.append(BASE_DIR / fallback_rel)
+    candidates.append(Path("/Users/pernavjain/Documents/Tutorial") / filename)
+    for c in candidates:
+        if c.exists():
+            return c
+    return BASE_DIR / "docs" / "tutorial_qa" / filename
+
+
+SUITE_PATH = _resolve_asset("rovc_testcases.json", ".agents/teamwork/worker_m1/converged_suite.json")
+RUBRIC_PATH = _resolve_asset("rovc_rubric.json", ".agents/teamwork/worker_m1/rubric_evaluation.json")
 
 
 def test_rovc_suite_files_exist():

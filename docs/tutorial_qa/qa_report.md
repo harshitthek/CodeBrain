@@ -4,9 +4,9 @@
 **Author:** Worker M4 (Consolidated QA Deliverables & Final QA Report Author)  
 **Quality Engineering Platform:** CodeBrain Autonomous Agentic Framework (`apps/ai_agents/`, `apps/core/exporters/`)  
 **Target Repositories:**  
-- Competition Specification: `/Users/pernavjain/Documents/Tutorial/NAT-001-ROVC.pdf` (Version 1, SEWA FIRST – Innovation Challenge 2026)  
-- AI/LLM Tutorial Notebooks: `/Users/pernavjain/Documents/Tutorial/` (`soup-python-repair-tutorial.ipynb`, `bug-whisper-python.ipynb`, `adapter-model-combine.ipynb`)  
-- CodeBrain Test Engine: `/Users/pernavjain/Documents/CodeBrain/` (`tests/test_notebook_integrity.py`, `tests/test_rovc_suite.py`, `tests/test_rovc_exports.py`)  
+- Competition Specification: `Tutorial/NAT-001-ROVC.pdf` (Version 1, SEWA FIRST – Innovation Challenge 2026)  
+- AI/LLM Tutorial Notebooks: `Tutorial/` (`soup-python-repair-tutorial.ipynb`, `bug-whisper-python.ipynb`, `adapter-model-combine.ipynb`)  
+- CodeBrain Test Engine: `CodeBrain/` (`tests/test_notebook_integrity.py`, `tests/test_rovc_suite.py`, `tests/test_rovc_exports.py`)  
 **Evaluation Date:** October 2026  
 **Overall Quality Verdict:** **100% PASS (CONVERGED & VERIFIED)**
 
@@ -31,7 +31,7 @@ All four acceptance criteria established in `ORIGINAL_REQUEST.md` have been met 
 | **AC-1: Specification Test Coverage** | Coverage of DTU ROVC Tasks 1, 2, 3, Physical & Safety constraints, and User Story tiers (`NAT-001-ROVC.pdf`). | $\ge 1$ boundary & $\ge 1$ exception per task; complete preconditions, steps, and expected outcomes. | **40 Test Cases** generated and validated: 6 Gate, 7 Vision, 8 Maze, 14 Safety/Physical, 5 Governance; **13 Boundary** cases, **12 Exception** scenarios. | **PASS** (100%) |
 | **AC-2: Notebook Code Integrity** | Static analysis, AST parsing, execution order, dependency consistency, and context budgeting across 3 tutorial notebooks. | 100% valid Python syntax without AST errors; verified preprocessing and adapter merging validation. | **54 / 54 Code Cells (100.0%)** pass AST compilation; **0 DAG forward references**; ChatML budgets & response masking verified; 4-bit and FP16 merges audited. | **PASS** (100%) |
 | **AC-3: Quality Rubric & Convergence** | Multi-dimensional quality rubric evaluation via `ActorCriticReflectionEngine`. | Rubric quality score $\ge 85.0 / 100$; monotonic regression safeguard active. | **Iteration 1: 74.0/100** (critique captured) $\rightarrow$ **Iteration 2: 100.0/100** (converged across all 5 dimensions). | **PASS** (100%) |
-| **AC-4: Report Delivery & Multi-Format Exports** | Generation of consolidated QA report and multi-format structured exports in `/Users/pernavjain/Documents/Tutorial/`. | Deliver `qa_report.md`, JSON, Excel (`.xlsx`), JUnit XML, and Markdown mind-map. | **5 Deliverables emitted**: `qa_report.md`, `rovc_testcases.json` (59.6 KB), `rovc_testcases.xlsx` (19.6 KB), `junit_testcases.xml` (47.0 KB), `testcases_mindmap.md` (40.2 KB). | **PASS** (100%) |
+| **AC-4: Report Delivery & Multi-Format Exports** | Generation of consolidated QA report and multi-format structured exports in `Tutorial/` (and `docs/tutorial_qa/`). | Deliver `qa_report.md`, JSON, Excel (`.xlsx`), JUnit XML, and Markdown mind-map. | **5 Deliverables emitted**: `qa_report.md`, `rovc_testcases.json` (59.6 KB), `rovc_testcases.xlsx` (19.6 KB), `junit_testcases.xml` (47.0 KB), `testcases_mindmap.md` (40.2 KB). | **PASS** (100%) |
 
 ---
 
@@ -380,7 +380,7 @@ The converged test suite contains **40 structured test cases**, formally validat
 ## 5. AI/LLM Tutorial Notebook Code Integrity Audit
 
 ### 5.1 Overview of Tutorial Notebooks Under Test
-The tutorial suite in `/Users/pernavjain/Documents/Tutorial` contains three educational and production notebooks demonstrating model fine-tuning, training telemetry, and standalone adapter merging for code repair LLMs (`Qwen2.5-Coder` family):
+The tutorial suite in `Tutorial/` (archived in `docs/tutorial_qa/notebooks/`) contains three educational and production notebooks demonstrating model fine-tuning, training telemetry, and standalone adapter merging for code repair LLMs (`Qwen2.5-Coder` family):
 
 1. **`soup-python-repair-tutorial.ipynb` (Soup CLI End-to-End Pipeline):**
    - 41 total cells (21 code cells, 20 markdown cells), nbformat 4.5.
@@ -533,7 +533,7 @@ The verification architecture is comprised of three dedicated automated test sui
 
 #### 1. Notebook Code Integrity Test Suite (`tests/test_notebook_integrity.py`):
 ```bash
-/Users/pernavjain/Documents/CodeBrain/.venv/bin/pytest tests/test_notebook_integrity.py -v
+pytest tests/test_notebook_integrity.py -v
 ```
 - `TestNotebookASTSyntaxSuite::test_cell_counts_and_structure` $\rightarrow$ **PASSED**
 - `TestNotebookASTSyntaxSuite::test_direct_ast_parsing` $\rightarrow$ **PASSED**
@@ -555,7 +555,7 @@ The verification architecture is comprised of three dedicated automated test sui
 
 #### 2. ROVC Specification Test Suite (`tests/test_rovc_suite.py`):
 ```bash
-/Users/pernavjain/Documents/CodeBrain/.venv/bin/pytest tests/test_rovc_suite.py -v
+pytest tests/test_rovc_suite.py -v
 ```
 - `test_rovc_suite_files_exist` $\rightarrow$ **PASSED**
 - `test_rovc_suite_pydantic_schema_conformance` $\rightarrow$ **PASSED** (Validated 40/40 test cases against `GeneratedTestCaseItem`)
@@ -565,7 +565,7 @@ The verification architecture is comprised of three dedicated automated test sui
 
 #### 3. Multi-Format Exporters Test Suite (`tests/test_rovc_exports.py`):
 ```bash
-/Users/pernavjain/Documents/CodeBrain/.venv/bin/pytest tests/test_rovc_exports.py -v
+pytest tests/test_rovc_exports.py -v
 ```
 - `TestROVCExportsSuite::test_json_export_structure_and_telemetry` $\rightarrow$ **PASSED** (59,680 bytes, 40 items, score telemetry)
 - `TestROVCExportsSuite::test_excel_export_openpyxl_and_formula_sanitization` $\rightarrow$ **PASSED** (19,688 bytes, 41 rows, 8 cols, `data_type='s'`, formula escaping verified)
@@ -582,7 +582,7 @@ Executing the complete CodeBrain test suite across all 13 test modules confirmed
 ============================= test session starts ==============================
 platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.7.0
 django: version: 6.0.2, settings: config.settings (from ini)
-rootdir: /Users/pernavjain/Documents/CodeBrain
+rootdir: <CodeBrain_Root>
 configfile: pytest.ini
 plugins: langsmith-0.14.12, django-4.14.0, anyio-4.15.1, platformdirs-4.13.5
 collected 99 items
@@ -698,7 +698,7 @@ The following 18 documented edge cases span competition physical boundaries, und
 
 ## 9. Deliverables & Artifact Index
 
-### 9.1 Inventory of Verified Deliverables in `/Users/pernavjain/Documents/Tutorial/`
+### 9.1 Inventory of Verified Deliverables in `Tutorial/` and `docs/tutorial_qa/`
 
 All generated deliverables have been verified for file existence, non-zero byte size, schema validity, and format integrity:
 
@@ -743,7 +743,7 @@ The comprehensive Quality Assurance evaluation conducted under CodeBrain's auton
 2. **Actor-Critic Quality Loop Converged:** The test case suite was audited and refined through CodeBrain's Actor-Critic reflection engine, achieving a perfect quality rubric score of **100.0 / 100**.
 3. **Notebook Code Integrity is Verified:** All 54 code cells across the three educational AI/LLM tutorial notebooks compile cleanly into valid Python AST modules with zero syntax errors, zero DAG forward references, and verified context budgeting and model merging logic.
 4. **All Test Suites Pass Without Regression:** 24 dedicated automated tests pass in under 0.2s, and the complete 99-test CodeBrain repository regression suite passes with 100% green status.
-5. **All Multi-Format Deliverables are Deployed:** JSON, Excel, JUnit XML, Markdown mindmap, and the consolidated QA report are deployed in `/Users/pernavjain/Documents/Tutorial/`.
+5. **All Multi-Format Deliverables are Deployed:** JSON, Excel, JUnit XML, Markdown mindmap, and the consolidated QA report are deployed in `Tutorial/` and `docs/tutorial_qa/`.
 
 **Final QA Evaluation:** **APPROVED & FULLY VERIFIED**  
 *CodeBrain Autonomous Quality Engineering Platform*

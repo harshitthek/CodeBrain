@@ -37,10 +37,10 @@
     },
     "exported_at": "2026-10-24T15:44:46.634550+00:00",
     "export_targets": [
-      "/Users/pernavjain/Documents/Tutorial/rovc_testcases.json",
-      "/Users/pernavjain/Documents/Tutorial/rovc_testcases.xlsx",
-      "/Users/pernavjain/Documents/Tutorial/junit_testcases.xml",
-      "/Users/pernavjain/Documents/Tutorial/testcases_mindmap.md"
+      "rovc_testcases.json",
+      "rovc_testcases.xlsx",
+      "junit_testcases.xml",
+      "testcases_mindmap.md"
     ]
   },
   "test_cases": [

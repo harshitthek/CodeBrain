@@ -2,14 +2,14 @@
 
 ## Architecture
 - **Specification Under Test**: `NAT-001-ROVC.pdf` (DTU ROV Challenge 2026, 20m x 10m arena, depth 0.6m - 1.8m).
-- **Notebooks Under Test**: `soup-python-repair-tutorial.ipynb`, `bug-whisper-python.ipynb`, `adapter-model-combine.ipynb` in `/Users/pernavjain/Documents/Tutorial`.
+- **Notebooks Under Test**: `soup-python-repair-tutorial.ipynb`, `bug-whisper-python.ipynb`, `adapter-model-combine.ipynb` in `Tutorial/` (or archived in `docs/tutorial_qa/notebooks/`).
 - **Quality Engineering Engine**: CodeBrain (`apps/ai_agents/common/orchestrator.py`, `apps/ai_agents/prd_analyzer/`, `apps/ai_agents/test_case_generator/`, `apps/ai_agents/test_case_reviewer/`, `apps/core/exporters/`).
 - **Data Flow**:
   1. Spec & Requirements Analysis: `PrdAnalyserAgent` extracts functional modules and test point matrix from `NAT-001-ROVC.pdf`.
   2. Bounded Reflection Loop: `ActorCriticReflectionEngine` (`TestCaseGeneratorAgent` ⇄ `TestCaseReviewerAgent`) generates and evaluates test cases until rubric score >= 85.0 with monotonic regression safeguard.
   3. Notebook AST & Pipeline Verification: Automated static AST parser, dependency checker, ChatML budget auditor, and adapter merging exception verifier.
   4. Enterprise Exporters: Converged test suite exported to JUnit XML, XMind / Markdown mind-map, Excel `.xlsx` (with injection sanitization), and JSON.
-  5. Consolidated QA Deliverables: Comprehensive `qa_report.md` in `/Users/pernavjain/Documents/Tutorial`.
+  5. Consolidated QA Deliverables: Comprehensive `qa_report.md` in `Tutorial/` (and archived in `docs/tutorial_qa/`).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source |
@@ -38,7 +38,7 @@
 | F22 | Structured JSON Test Suite Export | Pydantic v2 validated JSON export of converged test suite | M3 | Survey (CodeBrain) |
 | F23 | Excel Workbook (.xlsx) Export | Stylized Excel export with formula injection sanitization (`_sanitize_excel_text`) | M3 | Survey (CodeBrain) |
 | F24 | JUnit XML & Mind-Map Exports | Standard JUnit XML test suite report & XMind/Markmap compatible mindmap export | M3 | Survey (CodeBrain) |
-| F25 | Comprehensive QA Report | Detailed `qa_report.md` in `/Users/pernavjain/Documents/Tutorial` with audit results & metrics | M4 | Survey (Deliverables) |
+| F25 | Comprehensive QA Report | Detailed `qa_report.md` in `Tutorial/` (and `docs/tutorial_qa/`) with audit results & metrics | M4 | Survey (Deliverables) |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -46,7 +46,7 @@
 | M1 | ROVC 2026 Test Suite Generation & Actor-Critic Convergence | Features F01-F16: Task 1-3, Safety, Tiers, Boundary & Exception cases via CodeBrain ActorCritic reflection (Score >= 85.0) | None | DONE |
 | M2 | Notebooks Code Integrity & Pipeline Verification | Features F17-F21: AST verification, dependency audit, DAG flow, ChatML budgets, adapter merging | None | DONE |
 | M3 | Multi-Format Test Suite Exporter Integration | Features F22-F24: Export converged suite to JSON, Excel (.xlsx), JUnit XML, XMind/Markdown | M1 | DONE |
-| M4 | Consolidated QA Deliverables & Final QA Report | Feature F25: Final `qa_report.md` and complete QA package in `/Users/pernavjain/Documents/Tutorial` | M1, M2, M3 | DONE |
+| M4 | Consolidated QA Deliverables & Final QA Report | Feature F25: Final `qa_report.md` and complete QA package in `Tutorial/` and `docs/tutorial_qa/` | M1, M2, M3 | DONE |
 
 ## Interface Contracts
 ### CodeBrain Agent Schema Contract
@@ -67,13 +67,13 @@
   - Scale: Score 1-10 normalized to 10-100 scale; threshold >= 85.0.
 
 ## Code Layout
-- Target workspace: `/Users/pernavjain/Documents/Tutorial/`
+- Target workspace: `Tutorial/` (or `docs/tutorial_qa/`)
   - `qa_report.md`: Consolidated QA report.
   - `rovc_testcases.json`: Structured JSON test case export.
   - `rovc_testcases.xlsx`: Openpyxl stylized Excel workbook.
   - `junit_testcases.xml`: Standard JUnit XML test suite.
   - `testcases_mindmap.md`: Markmap-compatible Markdown mind-map.
-- Agent metadata workspace: `/Users/pernavjain/Documents/CodeBrain/.agents/teamwork/`
+- Agent metadata workspace: `.agents/teamwork/`
   - `orchestrator_1/`: Orchestrator planning and progress tracking.
   - `worker_m1/`: Milestone 1 Actor-Critic generation.
   - `worker_m2/`: Milestone 2 Notebook verification script & outputs.

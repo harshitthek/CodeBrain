@@ -38,9 +38,29 @@ from apps.core.exporters import (
 )
 
 # File Paths
-CONVERGED_SUITE_PATH = BASE_DIR / ".agents/teamwork/worker_m1/converged_suite.json"
-RUBRIC_EVALUATION_PATH = BASE_DIR / ".agents/teamwork/worker_m1/rubric_evaluation.json"
-TARGET_DIR = Path("/Users/pernavjain/Documents/Tutorial")
+CONVERGED_SUITE_PATH = (
+    BASE_DIR / ".agents/teamwork/worker_m1/converged_suite.json"
+    if (BASE_DIR / ".agents/teamwork/worker_m1/converged_suite.json").exists()
+    else BASE_DIR / "docs/tutorial_qa/rovc_testcases.json"
+)
+RUBRIC_EVALUATION_PATH = (
+    BASE_DIR / ".agents/teamwork/worker_m1/rubric_evaluation.json"
+    if (BASE_DIR / ".agents/teamwork/worker_m1/rubric_evaluation.json").exists()
+    else BASE_DIR / "docs/tutorial_qa/rovc_rubric.json"
+)
+def _resolve_target_dir() -> Path:
+    if os.getenv("TARGET_DIR"):
+        return Path(os.getenv("TARGET_DIR"))
+    if os.getenv("TUTORIAL_DIR"):
+        return Path(os.getenv("TUTORIAL_DIR"))
+    if (BASE_DIR.parent / "Tutorial").exists():
+        return BASE_DIR.parent / "Tutorial"
+    if Path("/Users/pernavjain/Documents/Tutorial").exists():
+        return Path("/Users/pernavjain/Documents/Tutorial")
+    return BASE_DIR / "docs" / "tutorial_qa"
+
+
+TARGET_DIR = _resolve_target_dir()
 
 OUTPUT_JSON_PATH = TARGET_DIR / "rovc_testcases.json"
 OUTPUT_XLSX_PATH = TARGET_DIR / "rovc_testcases.xlsx"

@@ -47,12 +47,12 @@ In traditional software development and QA engineering, testing suffers from fiv
 
 | Pain Point | How CodeBrain Solves It | Key Component |
 |---|---|---|
-| **Ambiguous Requirements** | Automatically ingests `.docx`, `.md`, or `.txt` PRDs; extracts functional boundaries, user stories, acceptance criteria, and missing risk catalogs. | [`prd_analyzer`](file:///Users/pernavjain/Documents/CodeBrain/apps/ai_agents/prd_analyzer/views.py) |
-| **Hallucinations & Broken JSON** | Enforces strict Pydantic v2 data models with multi-strategy regex fallback parsers that strip markdown fences and repair syntax errors. | [`schemas.py`](file:///Users/pernavjain/Documents/CodeBrain/apps/ai_agents/test_case_generator/schemas.py) |
-| **Low-Quality / Incomplete Tests** | Critic agent scores candidate suites across 4 dimensions: *Completeness*, *Coverage*, *Redundancy*, and *Feasibility*. Refines iteratively if score < 85. | [`orchestrator.py`](file:///Users/pernavjain/Documents/CodeBrain/apps/ai_agents/common/orchestrator.py) |
-| **Static Tests That Don't Run** | Closed-loop asynchronous runner executes HTTP requests live, verifies status codes, dot-paths, and JSONPath assertions, and flags failures. | [`APITestRunner`](file:///Users/pernavjain/Documents/CodeBrain/apps/ai_agents/iface_case_generator/runner.py) |
-| **Complex Docker Dependencies** | Lightweight embedded SQLite vector store + pure-Python Okapi BM25 engine running out-of-the-box on local dev machines without Docker. | [`PersistentSQLiteVectorStore`](file:///Users/pernavjain/Documents/CodeBrain/apps/knowledge/chroma_store.py), [`HybridRetriever`](file:///Users/pernavjain/Documents/CodeBrain/apps/knowledge/hybrid_retriever.py) |
-| **Manual Copy-Pasting to TMS** | Generates Jira Cloud issues, TestRail suites, XMind hierarchical mind-maps, sanitized Excel sheets, and headless CI/CD JUnit XML. | [`apps/core/exporters/`](file:///Users/pernavjain/Documents/CodeBrain/apps/core/exporters/) |
+| **Ambiguous Requirements** | Automatically ingests `.docx`, `.md`, or `.txt` PRDs; extracts functional boundaries, user stories, acceptance criteria, and missing risk catalogs. | [`prd_analyzer`](apps/ai_agents/prd_analyzer/views.py) |
+| **Hallucinations & Broken JSON** | Enforces strict Pydantic v2 data models with multi-strategy regex fallback parsers that strip markdown fences and repair syntax errors. | [`schemas.py`](apps/ai_agents/test_case_generator/schemas.py) |
+| **Low-Quality / Incomplete Tests** | Critic agent scores candidate suites across 4 dimensions: *Completeness*, *Coverage*, *Redundancy*, and *Feasibility*. Refines iteratively if score < 85. | [`orchestrator.py`](apps/ai_agents/common/orchestrator.py) |
+| **Static Tests That Don't Run** | Closed-loop asynchronous runner executes HTTP requests live, verifies status codes, dot-paths, and JSONPath assertions, and flags failures. | [`APITestRunner`](apps/ai_agents/iface_case_generator/runner.py) |
+| **Complex Docker Dependencies** | Lightweight embedded SQLite vector store + pure-Python Okapi BM25 engine running out-of-the-box on local dev machines without Docker. | [`PersistentSQLiteVectorStore`](apps/knowledge/chroma_store.py), [`HybridRetriever`](apps/knowledge/hybrid_retriever.py) |
+| **Manual Copy-Pasting to TMS** | Generates Jira Cloud issues, TestRail suites, XMind hierarchical mind-maps, sanitized Excel sheets, and headless CI/CD JUnit XML. | [`apps/core/exporters/`](apps/core/exporters/) |
 
 ---
 
@@ -159,8 +159,8 @@ Step 5: Enterprise Export & Synchronization
 To keep the UI responsive during multi-step LLM operations:
 1. Client triggers a task via `POST` and receives a unique `task_id`.
 2. Client opens an HTML5 `EventSource` connection to `/progress/stream/<task_id>/`.
-3. Background worker threads publish step updates and percentage completion to [`ProgressRegistry`](file:///Users/pernavjain/Documents/CodeBrain/apps/utils/progress_registry.py).
-4. [`SSELogEmitter`](file:///Users/pernavjain/Documents/CodeBrain/apps/utils/sse_bus.py) streams real-time updates (`data: {...}\n\n`) directly to the browser.
+3. Background worker threads publish step updates and percentage completion to [`ProgressRegistry`](apps/utils/progress_registry.py).
+4. [`SSELogEmitter`](apps/utils/sse_bus.py) streams real-time updates (`data: {...}\n\n`) directly to the browser.
 
 ---
 
@@ -218,8 +218,8 @@ To keep the UI responsive during multi-step LLM operations:
 #### Q4: How does the Zero-Docker Hybrid RAG work?
 > **Answer**: 
 > Traditional RAG systems require external vector databases (like Milvus or Qdrant) running in Docker. CodeBrain implements a pure-Python, zero-Docker hybrid retrieval system:
-> 1. **Dense Vector Search**: Uses [`PersistentSQLiteVectorStore`](file:///Users/pernavjain/Documents/CodeBrain/apps/knowledge/chroma_store.py) with cosine similarity over 384-dimensional dense vectors stored in a local SQLite table (`vector_chunks`).
-> 2. **Lexical Keyword Search**: Uses [`PureBM25Index`](file:///Users/pernavjain/Documents/CodeBrain/apps/knowledge/hybrid_retriever.py), a zero-dependency Okapi BM25 implementation. This is critical for exact keyword matches on technical symbols like API paths (`/api/v1/orders`), parameter names, and HTTP error codes.
+> 1. **Dense Vector Search**: Uses [`PersistentSQLiteVectorStore`](apps/knowledge/chroma_store.py) with cosine similarity over 384-dimensional dense vectors stored in a local SQLite table (`vector_chunks`).
+> 2. **Lexical Keyword Search**: Uses [`PureBM25Index`](apps/knowledge/hybrid_retriever.py), a zero-dependency Okapi BM25 implementation. This is critical for exact keyword matches on technical symbols like API paths (`/api/v1/orders`), parameter names, and HTTP error codes.
 > 3. **Reciprocal Rank Fusion (RRF)**: Merges the ranked lists from both dense and lexical retrievers using:
 >    $$\text{RRF\_Score}(d) = \frac{w_{\text{dense}}}{60 + \text{rank}_{\text{dense}}(d)} + \frac{w_{\text{bm25}}}{60 + \text{rank}_{\text{bm25}}(d)}$$
 > This ensures balanced retrieval: semantic concepts from the vector store and exact identifier matches from BM25.
@@ -240,7 +240,7 @@ To keep the UI responsive during multi-step LLM operations:
 
 #### Q6: How does CodeBrain prevent LLM vendor lock-in?
 > **Answer**: 
-> Through the **Universal LLM Factory** (`LLMServiceFactory` in [`apps/llm/base.py`](file:///Users/pernavjain/Documents/CodeBrain/apps/llm/base.py)). It abstracts provider differences behind a unified LangChain-compatible interface. By simply setting environment variables or selecting a provider in the UI, users can switch between:
+> Through the **Universal LLM Factory** (`LLMServiceFactory` in [`apps/llm/base.py`](apps/llm/base.py)). It abstracts provider differences behind a unified LangChain-compatible interface. By simply setting environment variables or selecting a provider in the UI, users can switch between:
 > - **DeepSeek** (`DeepSeekChatModel`)
 > - **Qwen** (`QwenChatModel`)
 > - **OpenAI** (`ChatOpenAI` / `gpt-4o-mini`)
@@ -251,7 +251,7 @@ To keep the UI responsive during multi-step LLM operations:
 #### Q7: How does CodeBrain handle circular `$ref` references in OpenAPI/Swagger schemas?
 > **Answer**: 
 > Real-world OpenAPI schemas often contain recursive data structures (e.g., a `Category` object with a list of child `Category` objects). Naive recursive parsers result in infinite recursion and `RecursionError`.
-> In [`apps/knowledge/openapi_parser.py`](file:///Users/pernavjain/Documents/CodeBrain/apps/knowledge/openapi_parser.py), we maintain a visited reference set (`visited_refs`) during traversal. If a schema pointer is encountered that is already in the current resolution path, resolution halts and substitutes an elliptical mock object `{"_circular_ref": ref_path}`.
+> In [`apps/knowledge/openapi_parser.py`](apps/knowledge/openapi_parser.py), we maintain a visited reference set (`visited_refs`) during traversal. If a schema pointer is encountered that is already in the current resolution path, resolution halts and substitutes an elliptical mock object `{"_circular_ref": ref_path}`.
 
 ---
 
@@ -268,7 +268,7 @@ To keep the UI responsive during multi-step LLM operations:
 #### Q9: What is Formula Injection (CSV/Excel Injection) and how did you mitigate it?
 > **Answer**: 
 > - **The Risk**: If test case descriptions or inputs contain characters like `=CMD|' /C calc'!A0` or `=SUM(...)`, opening the exported `.xlsx` workbook in Microsoft Excel could execute arbitrary system commands or exfiltrate data.
-> - **Our Mitigation** in [`export_test_cases_excel`](file:///Users/pernavjain/Documents/CodeBrain/apps/ai_agents/test_case_reviewer/views.py):
+> - **Our Mitigation** in [`export_test_cases_excel`](apps/ai_agents/test_case_reviewer/views.py):
 >   1. Every written cell is explicitly forced to string data type (`cell.data_type = 's'`).
 >   2. Any cell value starting with `=`, `+`, `-`, or `@` is sanitized by prefixing it with a single quote (`'`), rendering it as harmless literal text in Excel.
 
@@ -294,7 +294,7 @@ To keep the UI responsive during multi-step LLM operations:
 
 #### Q12: How does the closed-loop API runner evaluate test assertions?
 > **Answer**: 
-> In [`runner.py`](file:///Users/pernavjain/Documents/CodeBrain/apps/ai_agents/iface_case_generator/runner.py), the runner evaluates assertions across 3 targets:
+> In [`runner.py`](apps/ai_agents/iface_case_generator/runner.py), the runner evaluates assertions across 3 targets:
 > 1. **Status Code**: Checks whether the HTTP response code matches expected status (e.g. `200`, `201`, `400`).
 > 2. **JSONPath & Dot-Notation Extraction**: Uses `jsonpath-ng.ext` to query deeply nested response fields (e.g. `$.data.user.id` or `orders[0].status`).
 > 3. **Assertion Operators**: Supports `EQUALS`, `NOT_EQUALS`, `CONTAINS`, `NOT_CONTAINS`, `GREATER_THAN`, `LESS_THAN`, `IS_NULL`, `NOT_NULL`, and `REGEX_MATCH`.
