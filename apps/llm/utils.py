@@ -12,7 +12,7 @@ def get_agent_llm_configs(agent_name: str):
 
     agent_defaults = getattr(settings, "AGENT_LLM_DEFAULTS", {})
     # agent_provider_config is the config in AGENT_LLM_DEFAULTS from settings.py, i.e., default provider for each agent
-    agent_provider = agent_defaults.get(agent_name).get("provider", global_default_provider)
+    agent_provider = (agent_defaults.get(agent_name) or {}).get("provider", global_default_provider)
 
     return agent_provider, global_providers
 

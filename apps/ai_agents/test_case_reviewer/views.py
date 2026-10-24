@@ -298,7 +298,8 @@ def export_test_cases_excel(request):
 
         def _sanitize_excel_text(val):
             s = str(val if val is not None else "")
-            if s.startswith("="):
+            stripped = s.lstrip()
+            if stripped and stripped[0] in ('=', '+', '-', '@', '\t', '\r'):
                 return f"'{s}"
             return s
 

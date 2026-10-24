@@ -1,0 +1,10 @@
+# Existing CodeBrain pipeline dependencies
+-r requirements.txt
+
+# Fetch.ai ACP / Agentverse runtime (pinned together because interactive cards use uagents-core).
+uagents==0.25.5
+uagents-core==0.4.12
+
+# The approved repository-verification action executes this constrained runner.
+pytest==9.1.1
+pytest-django==4.14.0

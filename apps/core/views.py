@@ -7,9 +7,9 @@ from .models import TestCase, KnowledgeBase, TestCaseReview
 from ..knowledge.service import get_knowledgeService_instance
 
 from django.conf import settings
-from apps.llm import LLMServiceFactory
 from apps.utils.logger_manager import get_logger
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.functional import SimpleLazyObject
 import os
 from datetime import datetime
 from apps.knowledge.milvus_helper import process_singel_file
@@ -24,11 +24,9 @@ DEFAULT_PROVIDER = llm_config.get('default_provider', 'deepseek')
 PROVIDERS = {k: v for k, v in llm_config.items() if k != 'default_provider'}
 DEFAULT_LLM_CONFIG = PROVIDERS.get(DEFAULT_PROVIDER, {})
 
-llm_service = LLMServiceFactory.create(
-    provider=DEFAULT_PROVIDER,
-)
-
-knowledge_service = get_knowledgeService_instance()
+# Knowledge infrastructure is optional and expensive to construct. Delay it until a
+# knowledge endpoint actually needs it instead of doing network/model work on import.
+knowledge_service = SimpleLazyObject(get_knowledgeService_instance)
 
 
 def index(request):

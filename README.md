@@ -4,11 +4,13 @@
 
 **Autonomous Multi-Agent AI Quality Engineering & Closed-Loop API Testing Platform**
 
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Django 5.x](https://img.shields.io/badge/Django-5.x-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Django 6.x](https://img.shields.io/badge/Django-6.x-092E20?logo=django&logoColor=white)](https://www.djangoproject.com/)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-E92063?logo=pydantic&logoColor=white)](https://docs.pydantic.dev/)
-[![Tests](https://img.shields.io/badge/Tests-61%20Passed-2ea44f?logo=pytest&logoColor=white)](tests/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/Tests-pytest-2ea44f?logo=pytest&logoColor=white)](tests/)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+![tag:innovationlab](https://img.shields.io/badge/innovationlab-3D8BD3)
+![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
 
 [Architecture](ARCHITECTURE.md) · [Agents Guide](AGENTS.md) · [Hybrid RAG & Memory](MEMORY.md) · [Roadmap](PHASES.md) · [Design System](DESIGN.md)
 
@@ -19,6 +21,75 @@
 ## Overview
 
 **CodeBrain** is an autonomous quality engineering platform that transforms product requirements, API specifications, and source code into verified, executable test suites. Rather than acting as a single-pass prompt wrapper, CodeBrain coordinates specialized AI agents through an **Actor-Critic reflection loop**, executes generated HTTP/REST assertions asynchronously, and syncs converged test suites directly to enterprise Test Management Systems.
+
+## Fetch-a-thon 3: CodeBrain Release Guardian
+
+**CodeBrain Release Guardian** is the hackathon submission entry point. It makes the existing Actor–Critic pipeline usable from ASI:One through the Fetch `AgentChatProtocol` 0.3.0 rather than treating the website as the primary demo.
+
+```
+ASI:One chat → requirement card → ASI:One Actor–Critic QA plan
+         → review card → explicit approval → configured repository pytest run → QA evidence
+```
+
+The agent is intentionally conservative:
+
+- It uses `ASI1_API_KEY` for the required ASI:One reasoning step. ACP transport itself does **not** require a model key.
+- It returns standards-based interactive cards and acknowledges incoming ACP chat messages.
+- It never deploys, writes to a target, uses a secret submitted in chat, or accepts an arbitrary repository path or command.
+- Its optional action runs a constrained `python -m pytest` command only in a trusted local Git repository configured by the operator. It is offered only after the user approves the review card and its subprocess receives no API keys or Django secrets.
+- A quality score is explicitly presented as a QA signal, never as an automatic release decision.
+
+### Publish checklist (account-bound)
+
+The code is ready for these steps, which require your own Fetch/ASI account and must be performed after deployment:
+
+1. Create an Agentverse account and register the running agent's printed `agent1...` address.
+2. Set a public Agentverse profile name, description, and the repo URL.
+3. Open an ASI:One shared chat, discover the agent, and complete the requirement → review → approval flow there.
+4. Replace the placeholders below with the actual URLs before submission.
+
+| Submission item | Value |
+|---|---|
+| Agentverse profile | `PUBLISH: add the public Agentverse profile URL` |
+| Agent address | `agent1q2j6crzl0hvhq8vc3unxqr2t96jeytsqwyzjaw8hzqxppkcvc95nun37g6k` |
+| Direct ACP endpoint | `https://e1a1-14-99-154-34.ngrok-free.app/submit` |
+| ASI:One demo chat | `PUBLISH: add the shared ASI:One chat URL` |
+| Demo video | `PUBLISH: add the public video URL` |
+
+### Run the Fetch agent locally
+
+Use Python **3.12 or 3.13** for the uAgents runtime. Copy the safe template, add only your own private values, configure the repository to verify, then run the agent:
+
+```bash
+cp .env.example .env
+# Set DJANGO_SECRET_KEY, FETCH_AGENT_SEED, ASI1_API_KEY, and an absolute
+# RELEASE_GUARDIAN_REPO_PATH in .env.
+# ASI1_REQUEST_TIMEOUT defaults to 60 seconds per model request.
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-agent.txt
+python -m agents.release_guardian.agent
+```
+
+The command prints the address needed in Agentverse. The agent's detailed behavior and safety boundary are in [agents/release_guardian/README.md](agents/release_guardian/README.md).
+
+### Optional: register a deployed public agent through the Agentverse v2 API
+
+Use this opt-in path only after deploying the agent behind a public HTTPS reverse proxy that forwards `/submit` to
+`FETCH_AGENT_PORT`. Do **not** use the Agentverse Inspector URL or `localhost` as the endpoint.
+
+```bash
+# In .env — never commit these values.
+AGENTVERSE_V2_REGISTRATION_ENABLED=true
+AGENTVERSE_API_KEY=your-agentverse-api-key
+AGENTVERSE_PUBLIC_ENDPOINT=https://release-guardian.example.com/submit
+```
+
+The registration uses the existing `FETCH_AGENT_SEED`, so it preserves the same `agent1...`
+identity. On successful startup it publishes the public profile, chat protocol, README, and
+starter prompts through Agentverse's v2 API; the runtime also receives ACP directly on that exact public URL. If Agentverse is temporarily unavailable, the agent still starts and logs a generic registration warning without exposing credentials.
+
+---
 
 ```
 [PRD (.docx/.md/.txt)] ──> [PRD Analyzer] ──> [Test Case Generator] ◄──┐ Actor-Critic
@@ -66,13 +137,19 @@
 CodeBrain runs out-of-the-box with local **SQLite** and **embedded vector storage** (no Docker required):
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate        # Linux / macOS
 .\.venv\Scripts\Activate.ps1     # Windows PowerShell
 
 pip install -r requirements.txt
+cp .env.example .env
+# Set DJANGO_SECRET_KEY and set DJANGO_DEBUG=true only for local development.
 python manage.py migrate
 ```
+
+MySQL is optional. Only when `USE_MYSQL=true` or `MYSQL_HOST` is configured, install its
+driver separately with `pip install -r requirements-mysql.txt`. On macOS, install the MySQL
+client development tools (for example, `brew install pkg-config mysql-client`) before that step.
 
 ### 2. Configure LLM Keys
 
@@ -106,20 +183,21 @@ cd frontend && npm install && npm run dev
 Run API contract suites in CI/CD pipelines with JUnit XML reporting and non-zero failure exit codes:
 
 ```bash
-python manage.py run_test_suite path/to/suite.json \
+python manage.py run_test_suite --spec-file path/to/suite.json \
   --base-url https://api.example.com \
-  --junit-output reports/junit.xml \
-  --json-output reports/summary.json
+  --output-junit reports/junit.xml \
+  --output-pytest reports/generated_tests.py
 ```
 
 ---
 
 ## Testing
 
-Run the full 61-test verification suite across all 4 engineering phases:
+Install the development test dependencies and run the complete verification suite:
 
 ```bash
-pytest -v
+pip install -r requirements-dev.txt
+pytest -q
 ```
 
 ---
@@ -232,7 +310,7 @@ If you use Jira, CodeBrain can push the test cases straight to your board:
 requests.post("http://localhost:8000/pipeline/export/", json={
     "target": "jira",
     "project_key": "YOUR-PROJECT-KEY",   # e.g. "MAT" for a project called Matiks
-    "cases": data["final_cases"]
+    "test_cases": data["final_cases"]
 })
 ```
 
@@ -258,7 +336,8 @@ Make sure `JIRA_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` are set in CodeBrain's 
 
 | `llm_provider` value | Required environment variable |
 |---|---|
-| `deepseek` | `DASHSCOPE_API_KEY` |
+| `asi1` | `ASI1_API_KEY` |
+| `deepseek` | `DEEPSEEK_API_KEY` |
 | `qwen` | `QWEN_API_KEY` |
 | `openai` | `OPENAI_API_KEY` |
 | `groq` | `GROQ_API_KEY` |
@@ -276,4 +355,4 @@ Make sure `JIRA_URL`, `JIRA_EMAIL`, and `JIRA_API_TOKEN` are set in CodeBrain's 
 
 ## License
 
-Released under the [MIT License](LICENSE).
+Released under the [Apache License 2.0](LICENSE).

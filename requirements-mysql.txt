@@ -1,0 +1,3 @@
+# Optional MySQL database support. The default local CodeBrain setup uses SQLite.
+-r requirements.txt
+mysqlclient==2.2.7

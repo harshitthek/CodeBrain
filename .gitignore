@@ -28,6 +28,7 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+.gravitas/
 
 # Logs
 logs/
@@ -37,6 +38,7 @@ logs/
 *.sqlite3
 media/
 uploads/
+data/
 
 # Environment variables
 .env
@@ -48,3 +50,6 @@ uploads/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Agent workspaces
+.agents/

@@ -1,17 +1,21 @@
 import json
 import re
 from typing import List, Dict, Any, Optional, Union
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 
 class GeneratedTestCaseItem(BaseModel):
     """Schema for an individual generated test case."""
+    model_config = ConfigDict(extra="allow")
+
+    case_id: Optional[str] = Field(default=None, description="Unique test case identifier (e.g. ROVC-TC-001)")
+    name: Optional[str] = Field(default=None, description="Concise descriptive title")
     description: str = Field(..., description="Summary of the test scenario")
     preconditions: Optional[str] = Field(default="", description="Setup steps or preconditions")
     test_steps: List[str] = Field(..., description="Sequential actions taken")
     expected_results: List[str] = Field(..., description="Expected verified outcomes")
     case_type: Optional[str] = Field(default="Functional", description="Category of test")
-    priority: Optional[str] = Field(default="P2", description="Priority level: P0, P1, P2, P3")
+    priority: Optional[str] = Field(default="P2", description="Priority level: P0, P1, P2, P3 or High, Medium, Low")
 
     @field_validator("description", mode="before")
     @classmethod
