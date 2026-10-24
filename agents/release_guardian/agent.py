@@ -43,8 +43,10 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 
 def _public_endpoint(value: str) -> str:
-    """Validate the public HTTPS endpoint required by Agentverse's v2 API."""
-    endpoint = value.strip()
+    """Validate and normalize the public HTTPS endpoint required by Agentverse's v2 API."""
+    endpoint = value.strip().rstrip("/")
+    if not endpoint.endswith("/submit"):
+        endpoint = f"{endpoint}/submit"
     parsed = urlparse(endpoint)
     hostname = parsed.hostname
     if (
@@ -117,9 +119,10 @@ def register_production_agentverse_profile(seed: str) -> bool:
                 "is_public": "True",
             },
         )
-    except AgentverseRequestError:
+    except AgentverseRequestError as error:
         logger.warning(
-            "Agentverse v2 registration did not complete; continuing with the configured ACP runtime."
+            "Agentverse v2 registration did not complete (%s); continuing with the configured ACP runtime.",
+            error,
         )
         return False
     return bool(registered)
@@ -162,6 +165,18 @@ def create_release_guardian_agent(
         loop=loop,
         handle_messages_concurrently=True,
     )
+
+    # Route root-path '/' or empty path requests to '/submit' for seamless webhook compatibility
+    if hasattr(agent, "_server") and hasattr(agent._server, "__call__"):
+        original_asgi_call = agent._server.__call__
+
+        async def _compatible_asgi_call(scope, receive, send):
+            if scope.get("type") == "http" and scope.get("path") in ("", "/"):
+                scope["path"] = "/submit"
+            await original_asgi_call(scope, receive, send)
+
+        agent._server.__call__ = _compatible_asgi_call
+
     protocol = Protocol(spec=chat_protocol_spec)
     guardian = workflow or ReleaseGuardianWorkflow(ReleaseGuardianService())
 
