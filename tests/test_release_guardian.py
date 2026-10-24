@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from agents.release_guardian.cards import card_payload_size, intake_card
+from agents.release_guardian.cards import card_payload_size, home_card, intake_card
 from agents.release_guardian.workflow import ReleaseGuardianWorkflow
 from apps.release_guardian.policy import (
     ReleaseGuardianPolicy,
@@ -77,6 +77,49 @@ def configured_policy(repository: Path) -> ReleaseGuardianPolicy:
     )
 
 
+async def create_guided_plan(
+    workflow: ReleaseGuardianWorkflow,
+    sender: str,
+    requirements: str,
+    *,
+    case_count: str = "3",
+    target: str = "none",
+):
+    """Walk the only supported path to an ASI:One QA-plan generation."""
+    session = await workflow.sessions.get(sender)
+    await workflow.handle(
+        sender,
+        "",
+        {"action": "home_selection", "choice": "create_qa_plan", "flow_id": session.flow_id},
+    )
+    session = await workflow.sessions.get(sender)
+    await workflow.handle(
+        sender,
+        "",
+        {
+            "action": "input_method_selection",
+            "choice": "paste_requirement",
+            "flow_id": session.flow_id,
+        },
+    )
+    session = await workflow.sessions.get(sender)
+    await workflow.handle(
+        sender,
+        "",
+        {
+            "action": "submit_requirement",
+            "requirements": requirements,
+            "case_count": case_count,
+            "target": target,
+            "flow_id": session.flow_id,
+        },
+    )
+    session = await workflow.sessions.get(sender)
+    return await workflow.handle(
+        sender, "", {"action": "generate_plan", "flow_id": session.flow_id}
+    )
+
+
 def test_policy_only_exposes_a_configured_repository_and_rejects_other_commands(
     tmp_path,
 ):
@@ -99,13 +142,17 @@ def test_policy_only_exposes_a_configured_repository_and_rejects_other_commands(
 
 
 def test_cards_follow_the_standard_metadata_contract_and_size_limit(tmp_path):
-    card = intake_card(
-        configured_policy(make_test_repository(tmp_path)).enabled_targets()
-    )
-    assert card.metadata["card_protocol_version"] == "1"
-    assert card.metadata["requires_card_interaction"] == "true"
-    assert card.metadata["card_kind"] == "form"
-    assert card_payload_size(card) < 64 * 1024
+    for card in (
+        home_card("test-flow"),
+        intake_card(
+            configured_policy(make_test_repository(tmp_path)).enabled_targets(),
+            "test-flow",
+        ),
+    ):
+        assert card.metadata["card_protocol_version"] == "1"
+        assert card.metadata["requires_card_interaction"] == "true"
+        assert card.metadata["card_kind"] == "form"
+        assert card_payload_size(card) < 64 * 1024
 
 
 def test_plan_is_normalised_and_runs_a_real_configured_repository_suite(tmp_path):
@@ -148,15 +195,11 @@ def test_workflow_requires_approval_before_it_runs_the_repository_suite(tmp_path
     workflow = ReleaseGuardianWorkflow(service)
 
     async def exercise_workflow():
-        response = await workflow.handle(
+        response = await create_guided_plan(
+            workflow,
             "agent1user",
-            "",
-            {
-                "action": "create_qa_plan",
-                "requirements": "A verified user can reset a password using an email link.",
-                "case_count": "3",
-                "target": "configured_repository",
-            },
+            "A verified user can reset a password using an email link.",
+            target="configured_repository",
         )
         assert response.card is not None
         session = await workflow.sessions.get("agent1user")
@@ -164,7 +207,13 @@ def test_workflow_requires_approval_before_it_runs_the_repository_suite(tmp_path
         assert session.plan.target_id == "configured_repository"
 
         result = await workflow.handle(
-            "agent1user", "", {"action": "approve_live_check"}
+            "agent1user",
+            "",
+            {
+                "action": "review_selection",
+                "choice": "run_configured_test",
+                "flow_id": session.flow_id,
+            },
         )
         assert "1/1 passed" in result.text
 
@@ -179,27 +228,33 @@ def test_workflow_shows_reviewable_cases_and_claims_one_live_check(tmp_path):
     workflow = ReleaseGuardianWorkflow(service)
 
     async def exercise_workflow():
-        response = await workflow.handle(
+        response = await create_guided_plan(
+            workflow,
             "agent1user",
-            "",
-            {
-                "action": "create_qa_plan",
-                "requirements": "A verified user can reset a password using an email link.",
-                "case_count": "3",
-                "target": "configured_repository",
-            },
+            "A verified user can reset a password using an email link.",
+            target="configured_repository",
         )
         assert "Steps: Request reset" in response.text
         assert "Expected: The password is changed" in response.text
         assert "Reviewer focus: Exercise a rate-limit boundary" in response.text
+        session = await workflow.sessions.get("agent1user")
 
         first, second = await asyncio.gather(
-            workflow.handle("agent1user", "", {"action": "approve_live_check"}),
-            workflow.handle("agent1user", "", {"action": "approve_live_check"}),
+            workflow.handle(
+                "agent1user", "",
+                {"action": "review_selection", "choice": "run_configured_test", "flow_id": session.flow_id},
+            ),
+            workflow.handle(
+                "agent1user", "",
+                {"action": "review_selection", "choice": "run_configured_test", "flow_id": session.flow_id},
+            ),
         )
         responses = (first.text, second.text)
         assert sum("1/1 passed" in text for text in responses) == 1
-        assert sum("already started" in text for text in responses) == 1
+        assert any(
+            "already running" in text or "already started" in text or "no pending" in text
+            for text in responses
+        )
 
     asyncio.run(exercise_workflow())
 
@@ -212,20 +267,16 @@ def test_workflow_accepts_asi_one_planner_style_card_responses(tmp_path):
     workflow = ReleaseGuardianWorkflow(service)
 
     async def exercise_workflow():
-        created = await workflow.handle(
-            "agent1user",
-            (
-                'The user submitted the form. Requirements: "A verified user can reset '
-                'a password using an email link." Number of QA cases: 3. '
-                "Optional post-review repository test run: Configured release repository."
-            ),
-        )
+        created = await workflow.handle("agent1user", "The user selected Create a QA plan.")
         assert created.card is not None
-        approved = await workflow.handle(
-            "agent1user",
-            "The user selected Approve repository test run.",
+        created = await workflow.handle("agent1user", "The user selected Paste a feature requirement.")
+        assert created.card is not None
+        drafted = await workflow.handle(
+            "agent1user", "The user said: A verified user can reset a password using an email link."
         )
-        assert "1/1 passed" in approved.text
+        assert "Review this request" in drafted.text
+        generated = await workflow.handle("agent1user", "The user selected Generate QA plan.")
+        assert "Created" in generated.text
 
     asyncio.run(exercise_workflow())
 
@@ -283,12 +334,62 @@ def test_workflow_strips_asi_one_routing_mention_before_classifying_a_greeting()
 
 
 @pytest.mark.parametrize(
+    "greeting",
+    [
+        "hii",
+        "hiii!",
+        "heyyy",
+        "hellooo 👋",
+        "@codebrain hii",
+        "hiii @codebrain",
+        "@agent1q2j6crzl0hvhq8vc3unxqr2t96jeytsqwyzjaw8hzqxppkcvc95nun37g6k hiii",
+    ],
+    ids=(
+        "double-i",
+        "triple-i-punctuation",
+        "extended-hey",
+        "extended-hello-emoji",
+        "leading-handle",
+        "trailing-handle",
+        "address-handle",
+    ),
+)
+def test_workflow_answers_casual_greeting_variants_without_starting_the_qa_pipeline(
+    greeting,
+):
+    def fail_if_called(_requirements, _case_count):
+        raise AssertionError("A casual greeting must not start the ASI:One QA pipeline")
+
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=fail_if_called)
+    )
+
+    async def exercise_greeting():
+        response = await workflow.handle("agent1user", greeting)
+        assert "CodeBrain Release Guardian" in response.text
+        assert response.card is not None
+
+    asyncio.run(exercise_greeting())
+
+
+@pytest.mark.parametrize(
     "planner_message",
     [
         'The user said: "hi"',
         "User message: hello",
         "The user wants to say hello to the agent.",
+        'The user said: "hiii"',
+        "User message: heyyy 👋",
+        "The user wants to say hellooo to the agent.",
     ],
+    ids=(
+        "plain-hi",
+        "plain-hello",
+        "plain-agent-hello",
+        "extended-hi",
+        "extended-hey-emoji",
+        "extended-agent-hello",
+    ),
 )
 def test_workflow_answers_asi_one_planner_wrapped_greetings(planner_message):
     def fail_if_called(_requirements, _case_count):
@@ -307,34 +408,156 @@ def test_workflow_answers_asi_one_planner_wrapped_greetings(planner_message):
 
 
 @pytest.mark.parametrize(
-    ("question", "expected"),
+    "message",
     [
-        (
-            "I have several repositories — can you run verification against multiple repos, or use a path I paste here?",
-            "cannot use repository paths from chat or run multiple repositories",
-        ),
-        (
-            "The agent restarted while I was reviewing. Do I need to resubmit the feature requirement?",
-            "does not persist an unfinished review across a restart",
-        ),
+        "I have several repositories — can you run verification against multiple repos, or use a path I paste here?",
+        "The agent restarted while I was reviewing. Do I need to resubmit the feature requirement?",
+        "A verified user can reset a password using an email link.",
     ],
 )
-def test_workflow_answers_operational_questions_without_starting_the_qa_pipeline(
-    question, expected
-):
+def test_home_never_treats_free_text_as_a_requirement(message):
     def fail_if_called(_requirements, _case_count):
-        raise AssertionError("An operational question must not start the QA pipeline")
+        raise AssertionError("Home-screen text must not start the QA pipeline")
 
     workflow = ReleaseGuardianWorkflow(
         ReleaseGuardianService(pipeline_runner=fail_if_called)
     )
 
-    async def exercise_question():
-        response = await workflow.handle("agent1user", question)
-        assert expected in response.text
+    async def exercise_message():
+        response = await workflow.handle("agent1user", message)
+        assert "not treated that message as a requirement" in response.text
         assert response.card is not None
 
-    asyncio.run(exercise_question())
+    asyncio.run(exercise_message())
+
+
+def test_guided_questions_build_a_preview_without_calling_asi_one():
+    def fail_if_called(_requirements, _case_count):
+        raise AssertionError("A draft preview must not call the QA pipeline")
+
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=fail_if_called)
+    )
+
+    async def exercise_guided_entry():
+        session = await workflow.sessions.get("agent1user")
+        await workflow.handle(
+            "agent1user", "",
+            {"action": "home_selection", "choice": "create_qa_plan", "flow_id": session.flow_id},
+        )
+        session = await workflow.sessions.get("agent1user")
+        await workflow.handle(
+            "agent1user", "",
+            {"action": "input_method_selection", "choice": "guided_questions", "flow_id": session.flow_id},
+        )
+        session = await workflow.sessions.get("agent1user")
+        response = await workflow.handle(
+            "agent1user", "",
+            {
+                "action": "submit_guided_requirement",
+                "feature": "Password reset",
+                "user": "Verified account holder",
+                "success": "The account password is reset with an emailed link",
+                "failure": "Expired links cannot be reused",
+                "case_count": "3",
+                "target": "none",
+                "flow_id": session.flow_id,
+            },
+        )
+        saved = await workflow.sessions.get("agent1user")
+        assert "Review this request" in response.text
+        assert saved.stage.value == "plan_preview"
+        assert "Expired links cannot be reused" in saved.requirements
+
+    asyncio.run(exercise_guided_entry())
+
+
+def test_stale_or_wrong_stage_card_cannot_start_generation():
+    def fail_if_called(_requirements, _case_count):
+        raise AssertionError("A stale card must not start the QA pipeline")
+
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=fail_if_called)
+    )
+
+    async def exercise_rejection():
+        session = await workflow.sessions.get("agent1user")
+        response = await workflow.handle(
+            "agent1user", "",
+            {"action": "generate_plan", "flow_id": session.flow_id},
+        )
+        assert "not treated that message as a requirement" in response.text
+        response = await workflow.handle(
+            "agent1user", "",
+            {"action": "home_selection", "choice": "create_qa_plan", "flow_id": "stale"},
+        )
+        assert "not treated that message as a requirement" in response.text
+
+    asyncio.run(exercise_rejection())
+
+
+def test_legacy_text_card_selection_needs_the_current_flow_id():
+    """Older ACP clients may relay a card selection JSON as chat text."""
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=pipeline_result)
+    )
+
+    async def exercise_legacy_selection():
+        session = await workflow.sessions.get("agent1user")
+        response = await workflow.handle(
+            "agent1user",
+            '{"action":"home_selection","choice":"create_qa_plan","flow_id":"%s"}'
+            % session.flow_id,
+        )
+        assert "Choose how" in response.text
+        assert (await workflow.sessions.get("agent1user")).stage.value == "input_method"
+
+        response = await workflow.handle(
+            "agent1user",
+            '{"action":"input_method_selection","choice":"paste_requirement","flow_id":"stale"}',
+        )
+        assert "Choose an input method" in response.text
+        assert (await workflow.sessions.get("agent1user")).stage.value == "input_method"
+
+    asyncio.run(exercise_legacy_selection())
+
+
+def test_finishing_a_review_invalidates_old_card_flow_ids():
+    workflow = ReleaseGuardianWorkflow(
+        ReleaseGuardianService(pipeline_runner=pipeline_result)
+    )
+
+    async def exercise_completed_flow():
+        await create_guided_plan(
+            workflow,
+            "agent1user",
+            "A verified user can reset a password using an email link.",
+        )
+        reviewed = await workflow.sessions.get("agent1user")
+        old_flow_id = reviewed.flow_id
+        response = await workflow.handle(
+            "agent1user",
+            "",
+            {"action": "review_selection", "choice": "finish", "flow_id": old_flow_id},
+        )
+        fresh = await workflow.sessions.get("agent1user")
+        assert "QA review complete" in response.text
+        assert fresh.flow_id != old_flow_id
+        assert fresh.stage.value == "home"
+
+        response = await workflow.handle(
+            "agent1user",
+            "",
+            {
+                "action": "home_selection",
+                "choice": "create_qa_plan",
+                "flow_id": old_flow_id,
+            },
+        )
+        assert "not treated that message as a requirement" in response.text
+        assert (await workflow.sessions.get("agent1user")).stage.value == "home"
+
+    asyncio.run(exercise_completed_flow())
 
 
 def test_asi_one_key_is_required_for_the_real_pipeline(monkeypatch):

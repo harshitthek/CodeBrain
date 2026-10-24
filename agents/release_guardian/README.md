@@ -4,19 +4,33 @@
 ![tag:hackathon](https://img.shields.io/badge/hackathon-5F43F1)
 ![tag:domain/developer-tools](https://img.shields.io/badge/developer--tools-3D8BD3)
 
-CodeBrain Release Guardian is the Fetch-a-thon 3 entry point for CodeBrain. In ASI:One it accepts a feature requirement, uses ASI:One-backed Actor–Critic reasoning to create a small QA plan, shows that plan for review, and only then offers an optional policy-gated test run in one configured release repository.
+CodeBrain Release Guardian is the Fetch-a-thon 3 entry point for CodeBrain. In ASI:One it starts with a guided card, collects a feature requirement only after the user deliberately chooses an input method, uses ASI:One-backed Actor–Critic reasoning to create a small QA plan, shows that plan for review, and only then offers an optional policy-gated test run in one configured release repository.
 
 ## What it does
 
 Release Guardian helps engineering teams turn a feature requirement into reviewable, executable release evidence. It creates functional, boundary, and exception QA cases; critiques them with an independent reviewer pass; then asks for explicit approval before it runs the one allowed repository test command.
 
-Use it in ASI:One for requests such as:
+## Guided conversation
+
+Every new conversation begins at a home card. A greeting, question, direct requirement, planner paraphrase, or retried message at that point is **not** sent to the QA pipeline. Instead, the agent explains the boundary and presents the available choices again. This prevents ASI:One routing text such as `The user said: hiii` from being mistaken for a feature requirement.
+
+The supported path is:
+
+1. Select **Create a QA plan**.
+2. Select **Paste a feature requirement**, **Answer guided questions**, or **Use a safe demo example**.
+3. Fill in the requirement card and inspect the confirmation card. Generation has still not started.
+4. Select **Generate QA plan** to call ASI:One and create the Actor-Critic QA plan.
+5. Select **Finish QA review**, **Revise the requirement**, or (when enabled by the operator) **Run configured pytest verification**.
+
+Every card action carries a short-lived in-memory flow identifier and is accepted only at its expected stage. A stale card, an action from a different stage, or a free-text message cannot trigger model generation or a repository test run.
+
+Use it in ASI:One for feature requirements such as:
 
 - "Create a release QA plan for password reset with an expiring email link."
 - "Review boundary and failure coverage for guest checkout."
 - "Generate a QA plan for this requirement, then run the configured repository check after I review it."
 
-The agent accepts natural-language chat and ASI:One form/review-card selections. Its output is a QA plan with test steps and expected results, followed—only after confirmation—by a pass/fail summary of the configured pytest run.
+The agent accepts feature text only in the explicitly selected requirement-entry step; card selections advance the rest of the flow. Its output is a QA plan with test steps and expected results, followed—only after a second explicit review decision—by a pass/fail summary of the configured pytest run.
 
 Incoming messages are processed one at a time. This prevents rapid card taps, delivery retries, or parallel ASI:One prompts from producing overlapping Actor–Critic runs; later messages wait for the active response.
 
