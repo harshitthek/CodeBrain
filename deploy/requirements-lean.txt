@@ -1,0 +1,18 @@
+# CodeBrain Release Guardian - Lean Production Dependencies for 1.0 GB RAM / Micro VMs
+# Excludes heavy local ML runtimes (torch, sentence-transformers, spacy, milvus, chromadb).
+# All LLM reasoning runs upstream via ASI:One API (https://api.asi1.ai/v1).
+
+Django>=5.0.0,<7.0.0
+GitPython>=3.1.40
+json5>=0.13.0
+langchain-core>=0.3.0
+langchain-openai>=0.2.0
+pydantic>=2.10.0
+python-dotenv>=1.0.0
+PyYAML>=6.0.0
+Requests>=2.31.0
+httpx>=0.27.0
+uagents==0.25.5
+uagents-core==0.4.12
+pytest>=8.0.0
+pytest-django>=4.9.0

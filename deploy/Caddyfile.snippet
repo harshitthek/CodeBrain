@@ -1,0 +1,23 @@
+# Append this block to your existing /etc/caddy/Caddyfile on VM 1 (tree)
+# Replace 'guardian.yourdomain.com' with your actual domain or subdomain.
+
+guardian.yourdomain.com {
+    # Forward all ACP chat protocol and webhook traffic to CodeBrain Release Guardian
+    reverse_proxy 127.0.0.1:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Enable gzip / zstd compression
+    encode gzip zstd
+
+    # Optional logging
+    log {
+        output file /var/log/caddy/guardian_access.log {
+            roll_size 10mb
+            roll_keep 3
+        }
+    }
+}

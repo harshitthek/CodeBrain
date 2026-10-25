@@ -1,0 +1,34 @@
+[Unit]
+Description=CodeBrain Release Guardian ACP Agent (Fetch.ai / ASI:One)
+After=network.target network-online.target caddy.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=opc
+Group=opc
+WorkingDirectory=/home/opc/CodeBrain
+EnvironmentFile=/home/opc/CodeBrain/.env
+ExecStart=/home/opc/CodeBrain/.venv/bin/python -m agents.release_guardian.agent
+
+# Process resilience & restart policy
+Restart=on-failure
+RestartSec=10s
+TimeoutStopSec=15s
+
+# Strict Cgroups Resource Sandboxing for OCI Always Free (1.0 GB RAM / 1 OCPU)
+# Protects Caddy reverse proxy, World Tree Bot, and kernel stability from memory exhaustion
+MemoryHigh=220M
+MemoryMax=260M
+MemorySwapMax=150M
+CPUWeight=50
+CPUQuota=40%
+Nice=10
+
+# Security hardening
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
